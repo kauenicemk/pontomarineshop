@@ -11,7 +11,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "ponto-gaveta-pro-db"
-database_id = "COLOQUE_AQUI_O_ID_DO_BANCO_CRIADO"
+database_id = "e68095cf-365f-4896-a4d6-46230e86b4d7"
 
 # Variáveis não-sensíveis (equivalentes ao .env do server.js local).
 [vars]

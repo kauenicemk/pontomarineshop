@@ -1,0 +1,26 @@
+{
+  "name": "ponto-gaveta-pro",
+  "version": "4.0.0",
+  "description": "Sistema de controle de ponto - versao corrigida (seguranca, arquitetura e novas funcionalidades)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed:demo": "node src/db/seedDemo.js",
+    "setup:biometria": "node scripts/instalar-biometria.js",
+    "setup:https": "node scripts/gerar-https.js",
+    "dev:cf": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

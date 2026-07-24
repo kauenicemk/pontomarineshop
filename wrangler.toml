@@ -1,0 +1,27 @@
+name = "pontomarineshop"
+main = "public/_worker.js"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ponto-gaveta-pro-db"
+database_id = "COLOQUE_AQUI_O_ID_DO_BANCO_CRIADO"
+
+# Variáveis não-sensíveis (equivalentes ao .env do server.js local).
+[vars]
+BIOMETRIA_LIMIAR = "0.5"
+JORNADA_MENSAL_HORAS = "220"
+
+# Segredos — NÃO colocar aqui (esse arquivo normalmente é versionado). Configure com:
+#   wrangler pages secret put JWT_SECRET
+#   wrangler pages secret put ADMIN_EMAIL_INICIAL
+#   wrangler pages secret put ADMIN_SENHA_INICIAL
+#   wrangler pages secret put TOTEM_SENHA_INICIAL
+# Pra testar localmente (wrangler pages dev), copie .dev.vars.example para .dev.vars
+# (já está no .gitignore) e preencha os mesmos quatro valores lá.

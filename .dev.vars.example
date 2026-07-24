@@ -1,0 +1,9 @@
+# Copie este arquivo para ".dev.vars" (mesma pasta do wrangler.toml) para testar localmente
+# com `wrangler pages dev`. Em produção, esses valores vão via `wrangler pages secret put`,
+# nunca em arquivo versionado.
+
+JWT_SECRET=troque-por-uma-string-longa-e-aleatoria-antes-de-ir-pra-producao
+ADMIN_NOME_INICIAL=Administrador
+ADMIN_EMAIL_INICIAL=admin@empresa.com
+ADMIN_SENHA_INICIAL=troque-esta-senha
+TOTEM_SENHA_INICIAL=000000

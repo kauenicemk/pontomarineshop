@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ponto Gaveta Pro</title>
+<link rel="stylesheet" href="css/styles.css">
+<!--
+  face-api.js carregado LOCALMENTE (nunca de CDN). Se o arquivo abaixo não existir ainda, o
+  navegador só ignora o 404 e o app cai automaticamente no fluxo manual de bater ponto.
+  Instale com: npm run setup:biometria (veja o README).
+-->
+<script src="vendor/face-api/face-api.min.js" defer></script>
+</head>
+<body>
+
+<!-- ===================== LOGIN DO TOTEM ===================== -->
+<div id="tela-totem-login" class="tela-login escondido">
+    <div class="cartao-login">
+        <div class="marca">⏱️</div>
+        <h1>Totem de Ponto</h1>
+        <p class="subtitulo">Digite a senha configurada para este tablet</p>
+        <form id="form-totem-login">
+            <label class="rotulo">Senha do totem
+                <input type="password" class="campo" id="input-totem-senha" inputmode="numeric" autocomplete="off" autofocus>
+            </label>
+            <p class="erro-msg" id="erro-totem-login"></p>
+            <button type="submit" class="btn btn-principal">Entrar</button>
+        </form>
+        <a href="/admin" class="link-discreto">Sou administrador</a>
+    </div>
+</div>
+
+<!-- ===================== LOGIN DO ADMINISTRADOR ===================== -->
+<div id="tela-admin-login" class="tela-login escondido">
+    <div class="cartao-login">
+        <div class="marca">👑</div>
+        <h1>Painel Administrativo</h1>
+        <p class="subtitulo">Entre com sua conta de administrador</p>
+        <form id="form-admin-login">
+            <label class="rotulo">E-mail
+                <input type="email" class="campo" id="input-admin-email" autocomplete="username" autofocus>
+            </label>
+            <label class="rotulo">Senha
+                <input type="password" class="campo" id="input-admin-senha" autocomplete="current-password">
+            </label>
+            <p class="erro-msg" id="erro-admin-login"></p>
+            <button type="submit" class="btn btn-principal">Entrar</button>
+        </form>
+        <a href="/" class="link-discreto">Voltar para o totem</a>
+    </div>
+</div>
+
+<!-- ===================== TOTEM (uso no tablet, dentro da empresa) ===================== -->
+<div id="app-totem" class="app-totem escondido">
+    <header class="totem-topo">
+        <div class="totem-marca"><span class="ponto-ouro">⏱</span> Ponto</div>
+        <div class="totem-relogio" id="relogio">--:--:--</div>
+        <nav class="totem-nav">
+            <button data-totem-aba="bater-ponto" class="ativo">Bater Ponto</button>
+            <button data-totem-aba="historico">Meu Histórico</button>
+        </nav>
+    </header>
+
+    <main class="totem-corpo">
+        <section id="totem-bater-ponto" class="totem-tela ativa">
+            <div class="totem-card-central">
+                <h2>Selecione seu nome</h2>
+                <p class="dica">Ou use o reconhecimento facial para identificação automática</p>
+
+                <button class="btn-camera-totem" id="btn-toggle-reconhecimento">📷 Usar Reconhecimento Facial</button>
+
+                <input type="text" id="busca-funcionario" class="campo" placeholder="🔎 Buscar pelo nome..." style="margin-top:16px;">
+                <div class="mural-emojis" id="mural-funcionarios"></div>
+
+                <div class="botoes-ponto-totem">
+                    <button class="btn-ponto-grande cor-entrada btn-ponto" data-tipo="Entrada"><span class="icone">🛫</span>Entrada</button>
+                    <button class="btn-ponto-grande cor-almoco-saida btn-ponto" data-tipo="Saída Almoço"><span class="icone">🥪</span>Saída Almoço</button>
+                    <button class="btn-ponto-grande cor-almoco-volta btn-ponto" data-tipo="Retorno Almoço"><span class="icone">📥</span>Retorno Almoço</button>
+                    <button class="btn-ponto-grande cor-saida btn-ponto" data-tipo="Saída Final"><span class="icone">🛬</span>Saída Final</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="totem-historico" class="totem-tela">
+            <div class="totem-card-central">
+                <h2>Meu Histórico</h2>
+                <select id="select-f-hist" class="campo"></select>
+                <div id="dados-individuais" style="margin-top:16px;"></div>
+                <div class="tabela-wrap" style="margin-top:12px;">
+                    <table>
+                        <thead><tr><th>Data / Hora</th><th>Tipo</th><th>Justificativa</th></tr></thead>
+                        <tbody id="lista-historico-ind"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ===================== PAINEL ADMINISTRATIVO ===================== -->
+<div id="app-admin" class="app-admin escondido">
+    <aside class="admin-sidebar">
+        <div class="admin-marca"><span class="ponto-ouro">⏱</span> Ponto</div>
+        <nav class="admin-nav">
+            <button data-admin-aba="dashboard" class="ativo"><span class="icone-nav">🏠</span>Início</button>
+            <button data-admin-aba="gestor"><span class="icone-nav">📊</span>Painel do Gestor</button>
+            <button data-admin-aba="pendencias"><span class="icone-nav">🔔</span>Pendências</button>
+            <button data-admin-aba="banco-horas"><span class="icone-nav">📈</span>Banco de Horas</button>
+            <button data-admin-aba="individual"><span class="icone-nav">🧾</span>Relatório Individual</button>
+            <button data-admin-aba="ferias"><span class="icone-nav">🏖️</span>Férias</button>
+            <button data-admin-aba="indicadores"><span class="icone-nav">📊</span>Indicadores</button>
+            <button data-admin-aba="faltas"><span class="icone-nav">📋</span>Faltas</button>
+            <button data-admin-aba="feriados"><span class="icone-nav">🎉</span>Feriados</button>
+            <button data-admin-aba="config"><span class="icone-nav">⚙️</span>Configurar Horários</button>
+            <button data-admin-aba="biometria"><span class="icone-nav">📷</span>Biometria Facial</button>
+            <button data-admin-aba="admin-geral"><span class="icone-nav">🛠️</span>Administração Geral</button>
+        </nav>
+        <div class="admin-rodape-sidebar">
+            <div class="nome-admin" id="nome-admin-logado"></div>
+            <button id="btn-sair-admin">Sair</button>
+        </div>
+    </aside>
+
+    <main class="admin-conteudo">
+
+        <!-- ---------- Dashboard (tela inicial) ---------- -->
+        <section id="admin-dashboard" class="admin-tela ativa">
+            <h1 class="admin-secao-titulo">Resumo do dia</h1>
+            <p class="admin-secao-subtitulo">Atualizado agora — <span id="dashboard-data"></span></p>
+            <div class="grade-resumo-dia" id="dashboard-resumo-dia"></div>
+
+            <div class="card">
+                <h2>🔔 Pendências de hoje</h2>
+                <div id="lista-presentes-agora"></div>
+                <div id="lista-nao-chegaram" style="margin-top:12px;"></div>
+            </div>
+        </section>
+
+        <!-- ---------- Painel do Gestor ---------- -->
+        <section id="admin-gestor" class="admin-tela">
+            <h1 class="admin-secao-titulo">Painel do Gestor</h1>
+            <div class="card">
+                <h2>Ajuste Manual de Ponto</h2>
+                <div class="filtros">
+                    <label>Funcionário
+                        <select id="select-f-ajuste"></select>
+                    </label>
+                    <label>Data <input type="date" id="ajuste-data"></label>
+                    <label>Hora <input type="time" id="ajuste-hora"></label>
+                    <label>Tipo
+                        <select id="ajuste-tipo">
+                            <option>Entrada</option>
+                            <option>Saída Almoço</option>
+                            <option>Retorno Almoço</option>
+                            <option>Saída Final</option>
+                        </select>
+                    </label>
+                </div>
+                <input type="text" id="ajuste-justificativa" class="campo" placeholder="Justificativa do ajuste (obrigatória)" style="margin-bottom:10px;">
+                <button class="btn btn-principal" id="btn-salvar-ajuste">Salvar Ajuste (fica registrado no log de auditoria)</button>
+            </div>
+
+            <div class="card">
+                <h2>Relatório Consolidado</h2>
+                <div class="filtros">
+                    <label>De <input type="date" id="filtro-inicio"></label>
+                    <label>Até <input type="date" id="filtro-fim"></label>
+                    <button class="btn btn-principal" id="btn-filtrar-gestor" style="margin:0;">Filtrar</button>
+                    <button class="btn btn-secundario" id="btn-exportar-csv" style="margin:0;">⬇ Exportar CSV</button>
+                </div>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th><th>Data</th><th>Entrada</th><th>S.Almoço</th><th>V.Almoço</th><th>Saída</th>
+                                <th>Trabalhado</th><th>Atraso</th><th>Saldo</th><th>Extra 60%</th><th>Extra 100%</th><th>H. Noturna</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-gestor-linhas"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Histórico Geral (por dia)</h2>
+                <div id="espaco-gavetas"></div>
+            </div>
+        </section>
+
+        <!-- ---------- Pendências ---------- -->
+        <section id="admin-pendencias" class="admin-tela">
+            <h1 class="admin-secao-titulo">Pendências</h1>
+            <div class="card">
+                <h2>🟢 Em expediente agora</h2>
+                <div id="lista-presentes-agora-sub"></div>
+            </div>
+            <div class="card">
+                <h2>🔴 Ainda não bateram ponto hoje</h2>
+                <div id="lista-nao-chegaram-sub"></div>
+            </div>
+        </section>
+
+        <!-- ---------- Banco de Horas ---------- -->
+        <section id="admin-banco-horas" class="admin-tela">
+            <h1 class="admin-secao-titulo">Banco de Horas</h1>
+            <div class="card">
+                <div class="filtros">
+                    <label>Mês <input type="month" id="banco-mes"></label>
+                    <label>Colaborador <select id="banco-colaborador"></select></label>
+                </div>
+                <div id="banco-resumo-individual"></div>
+                <div class="canvas-wrap">
+                    <canvas id="grafico-banco-horas"></canvas>
+                    <div id="banco-tooltip" class="banco-tooltip" style="display:none;"></div>
+                </div>
+                <p id="banco-horas-legenda" style="color:var(--texto-mudo); font-size:12px; margin-top:8px;"></p>
+            </div>
+        </section>
+
+        <!-- ---------- Relatório Individual ---------- -->
+        <section id="admin-individual" class="admin-tela">
+            <h1 class="admin-secao-titulo">Relatório Individual</h1>
+            <div class="aviso-info">Saldo, atrasos, horas extras (60% e 100% separadas), horas noturnas e faltas de UM colaborador no mês.</div>
+            <div class="card">
+                <div class="filtros">
+                    <label>Colaborador <select id="individual-colaborador"></select></label>
+                    <label>Mês <input type="month" id="individual-mes"></label>
+                    <button class="btn btn-principal" id="btn-filtrar-individual" style="margin:0;">Gerar Relatório</button>
+                    <button class="btn btn-secundario" id="btn-exportar-individual" style="margin:0;">⬇ Exportar CSV</button>
+                    <button class="btn btn-secundario" id="btn-ver-espelho-individual" style="margin:0;">📄 Ver/Imprimir Espelho</button>
+                </div>
+                <div id="individual-resumo"></div>
+            </div>
+            <div class="card">
+                <h2>Detalhamento por dia</h2>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Data</th><th>Entrada</th><th>Saída</th><th>Trabalhado</th><th>Atraso</th><th>Saldo</th><th>Extra 60%</th><th>Extra 100%</th><th>Noturno</th></tr></thead>
+                        <tbody id="individual-dias"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ---------- Férias (simplificada) ---------- -->
+        <section id="admin-ferias" class="admin-tela">
+            <h1 class="admin-secao-titulo">Férias</h1>
+            <div class="aviso-info">Registre o período de férias direto — sem cálculo de período aquisitivo. Os dias ficam automaticamente marcados como férias no histórico do funcionário.</div>
+            <div class="card">
+                <h2>Registrar Férias</h2>
+                <div class="filtros">
+                    <label>Colaborador <select id="ferias-funcionario"></select></label>
+                    <label>Início <input type="date" id="ferias-data-inicio"></label>
+                    <label>Fim <input type="date" id="ferias-data-fim"></label>
+                    <label style="flex:1; min-width:180px;">Observação <input type="text" class="campo" id="ferias-observacao" placeholder="opcional"></label>
+                    <button class="btn btn-principal" id="btn-registrar-ferias" style="margin:0;">Registrar</button>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Períodos registrados</h2>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Colaborador</th><th>Início</th><th>Fim</th><th>Observação</th><th>Situação</th><th></th></tr></thead>
+                        <tbody id="lista-ferias"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ---------- Indicadores (People Analytics) ---------- -->
+        <section id="admin-indicadores" class="admin-tela">
+            <h1 class="admin-secao-titulo">Indicadores</h1>
+            <div class="card">
+                <div class="filtros">
+                    <label>Mês <input type="month" id="indicadores-mes"></label>
+                    <button class="btn btn-principal" id="btn-filtrar-indicadores" style="margin:0;">Atualizar</button>
+                </div>
+                <div id="indicadores-conteudo"></div>
+            </div>
+        </section>
+
+        <!-- ---------- Faltas ---------- -->
+        <section id="admin-faltas" class="admin-tela">
+            <h1 class="admin-secao-titulo">Faltas</h1>
+            <div class="aviso-info">Compara os dias de trabalho de cada funcionário (segundo a jornada configurada individualmente por dia da semana) contra quem realmente bateu ponto ou tem ausência justificada.</div>
+            <div class="card">
+                <div class="filtros">
+                    <label>Mês <input type="month" id="faltas-mes"></label>
+                    <button class="btn btn-principal" id="btn-filtrar-faltas" style="margin:0;">Calcular Faltas</button>
+                </div>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Colaborador</th><th>Data</th><th>Situação</th><th></th></tr></thead>
+                        <tbody id="lista-faltas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ---------- Feriados ---------- -->
+        <section id="admin-feriados" class="admin-tela">
+            <h1 class="admin-secao-titulo">Feriados</h1>
+            <div class="aviso-info">Feriados cadastrados aqui zeram a meta do dia automaticamente e fazem qualquer trabalho nesse dia contar como hora extra de 100%.</div>
+            <div class="card">
+                <h2>Cadastrar Feriado</h2>
+                <div class="filtros">
+                    <label>Data <input type="date" id="feriado-data"></label>
+                    <label>Nome <input type="text" class="campo" id="feriado-nome" placeholder="Ex: Dia da Independência"></label>
+                    <label>Abrangência
+                        <select id="feriado-abrangencia">
+                            <option value="nacional">Nacional</option>
+                            <option value="estadual">Estadual</option>
+                            <option value="municipal">Municipal</option>
+                            <option value="empresa" selected>Empresa</option>
+                        </select>
+                    </label>
+                    <button class="btn btn-principal" id="btn-salvar-feriado" style="margin:0;">Cadastrar</button>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Feriados Cadastrados</h2>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Data</th><th>Nome</th><th>Abrangência</th><th></th></tr></thead>
+                        <tbody id="lista-feriados"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ---------- Configurar Horários ---------- -->
+        <section id="admin-config" class="admin-tela">
+            <h1 class="admin-secao-titulo">Configurar Horários</h1>
+            <div class="aviso-info">
+                Regime (efetivar estagiário), tolerância/flexibilidade de almoço e a jornada de cada
+                funcionário (6 dias da semana) ficam todos aqui.
+            </div>
+            <div class="card">
+                <h2>Funcionários</h2>
+                <div id="lista-config-horarios"></div>
+            </div>
+        </section>
+
+        <!-- ---------- Biometria Facial ---------- -->
+        <section id="admin-biometria" class="admin-tela">
+            <h1 class="admin-secao-titulo">Biometria Facial</h1>
+            <div class="aviso-info">
+                Cada funcionário pode ter até 3 amostras. O sistema guarda só o descritor matemático
+                do rosto, nunca a foto em si — dado pessoal sensível (LGPD), cadastre só com consentimento.
+            </div>
+            <div class="card">
+                <h2>Funcionários</h2>
+                <div id="lista-biometria"></div>
+            </div>
+        </section>
+
+        <!-- ---------- Administração Geral ---------- -->
+        <section id="admin-admin-geral" class="admin-tela">
+            <h1 class="admin-secao-titulo">Administração Geral</h1>
+            <div class="card">
+                <h2>Cadastrar Novo Funcionário</h2>
+                <div class="filtros">
+                    <label>Nome <input type="text" class="campo" id="novo-func-nome" placeholder="Nome completo"></label>
+                    <label>Emoji <input type="text" class="campo" id="novo-func-emoji" placeholder="🙂" style="width:60px"></label>
+                    <label>Regime
+                        <select id="novo-func-regime">
+                            <option value="CLT">CLT</option>
+                            <option value="ESTAGIARIO">Estagiário</option>
+                            <option value="PJ">PJ</option>
+                        </select>
+                    </label>
+                    <label>Carga horária <input type="text" class="campo" id="novo-func-horas" placeholder="Ex: 8h"></label>
+                    <label>PIN pessoal <input type="text" class="campo" id="novo-func-pin" placeholder="4 a 8 dígitos" maxlength="8"></label>
+                </div>
+                <div class="filtros">
+                    <label>Data de admissão (opcional) <input type="date" id="novo-func-admissao"></label>
+                    <label>Salário-base R$ (opcional) <input type="number" min="0" step="0.01" class="campo" id="novo-func-salario" placeholder="Ex: 2200"></label>
+                    <label>Cargo (opcional) <input type="text" class="campo" id="novo-func-cargo" placeholder="Ex: Analista"></label>
+                    <label>Departamento (opcional) <input type="text" class="campo" id="novo-func-departamento" placeholder="Ex: Comercial"></label>
+                </div>
+                <button class="btn btn-principal" id="btn-cadastrar-funcionario">Cadastrar Funcionário</button>
+                <p style="color:var(--texto-mudo); font-size:12px; margin-top:8px;">
+                    A jornada (6 dias) já sai com valores padrão pro regime escolhido — ajuste fino em "Configurar Horários".
+                </p>
+            </div>
+
+            <div class="card">
+                <h2>Percentuais de Hora Extra</h2>
+                <div id="lista-config-horas-extras"></div>
+            </div>
+
+            <div class="card">
+                <h2>Acesso ao Sistema</h2>
+                <p style="color:var(--texto-mudo); font-size:12.5px; margin-bottom:14px;">
+                    Cada administrador tem sua própria conta (e-mail + senha). A senha do totem é única
+                    e compartilhada só com quem configura o tablet físico.
+                </p>
+                <h3>Nova conta de administrador</h3>
+                <div class="filtros">
+                    <label>Nome <input type="text" class="campo" id="novo-admin-nome"></label>
+                    <label>E-mail <input type="email" class="campo" id="novo-admin-email"></label>
+                    <label>Senha <input type="password" class="campo" id="novo-admin-senha"></label>
+                    <button class="btn btn-principal" id="btn-criar-admin" style="margin:0;">Criar Conta</button>
+                </div>
+                <div id="lista-admins" style="margin:14px 0;"></div>
+                <h3 style="margin-top:18px;">Trocar senha do totem</h3>
+                <div class="filtros">
+                    <label>Nova senha (4-8 dígitos) <input type="password" class="campo" id="nova-senha-totem" maxlength="8"></label>
+                    <button class="btn btn-secundario" id="btn-trocar-senha-totem" style="margin:0;">Trocar Senha do Totem</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ===================== MODAIS ===================== -->
+<div class="modal-overlay" id="modalCameraPonto">
+    <div class="modal-box modal-box-camera">
+        <button class="btn-fechar-x" id="btn-fechar-camera-ponto" aria-label="Fechar">✕</button>
+        <h3>📷 Reconhecimento Facial</h3>
+
+        <div class="video-wrap">
+            <video id="video-reconhecimento" autoplay muted playsinline></video>
+            <canvas id="overlay-reconhecimento"></canvas>
+        </div>
+        <p id="status-reconhecimento">Carregando...</p>
+
+        <div id="reconhecimento-resultado" style="display:none;">
+            <div class="reconhecido-emoji" id="reconhecido-emoji"></div>
+            <div class="reconhecido-nome" id="reconhecido-nome"></div>
+            <div class="botoes-ponto-totem">
+                <button class="btn-ponto-grande cor-entrada btn-ponto-modal" data-tipo="Entrada"><span class="icone">🛫</span>Entrada</button>
+                <button class="btn-ponto-grande cor-almoco-saida btn-ponto-modal" data-tipo="Saída Almoço"><span class="icone">🥪</span>Saída Almoço</button>
+                <button class="btn-ponto-grande cor-almoco-volta btn-ponto-modal" data-tipo="Retorno Almoço"><span class="icone">📥</span>Retorno Almoço</button>
+                <button class="btn-ponto-grande cor-saida btn-ponto-modal" data-tipo="Saída Final"><span class="icone">🛬</span>Saída Final</button>
+            </div>
+        </div>
+
+        <button class="btn btn-secundario" id="btn-selecionar-manualmente" style="margin-top:16px; width:100%;">Prefiro selecionar manualmente</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalPonto">
+    <div class="modal-box">
+        <h3>✅ Ponto Registrado!</h3>
+        <p id="modal-texto"></p>
+        <button class="btn btn-principal" id="btn-fechar-modal-ponto" style="width:100%;">Fechar</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalJustificarAusencia">
+    <div class="modal-box">
+        <h3>Justificar Ausência</h3>
+        <p id="justificar-texto-info" style="color:var(--texto-mudo); font-size:12.5px;"></p>
+        <input type="hidden" id="justificar-funcionario-id">
+        <input type="hidden" id="justificar-data">
+        <select id="justificar-tipo" class="campo" style="margin-bottom:8px;">
+            <option value="atestado">Atestado médico</option>
+            <option value="ferias">Férias</option>
+            <option value="licenca">Licença</option>
+            <option value="folga">Folga</option>
+            <option value="sem_justificativa">Sem justificativa (falta confirmada)</option>
+        </select>
+        <input type="text" id="justificar-observacao" class="campo" placeholder="Observação (opcional)" style="margin-bottom:8px;">
+        <div class="modal-botoes">
+            <button class="btn btn-secundario" id="btn-cancelar-justificativa">Cancelar</button>
+            <button class="btn btn-principal" id="btn-confirmar-justificativa">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalEspelho">
+    <div class="modal-box modal-box-espelho">
+        <button class="btn-fechar-x" id="btn-fechar-espelho" aria-label="Fechar">✕</button>
+        <div class="espelho-controles">
+            <label>Mês <input type="month" id="espelho-mes"></label>
+            <button class="btn btn-principal" id="btn-imprimir-espelho" style="margin:0;">🖨️ Imprimir / Salvar PDF</button>
+        </div>
+        <div id="espelho-conteudo"></div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

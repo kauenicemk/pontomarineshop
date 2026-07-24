@@ -1,0 +1,103 @@
+import { getAdminToken, getTotemToken } from './auth.js';
+
+class ApiError extends Error {
+    constructor(message, status) {
+        super(message);
+        this.status = status;
+    }
+}
+
+/**
+ * Wrapper único de fetch. `admin: true` manda o token de sessão do administrador (Bearer);
+ * `totem: true` manda o token do dispositivo (x-totem-token). O backend SEMPRE confere de
+ * novo (ver src/middleware/adminAuth.js e totemAuth.js) — nunca é só decoração de tela.
+ */
+async function chamar(caminho, { method = 'GET', body, admin = false, totem = false } = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (admin) {
+        const token = getAdminToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (totem) {
+        const token = getTotemToken();
+        if (token) headers['x-totem-token'] = token;
+    }
+
+    const res = await fetch(caminho, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch (_) { /* resposta sem corpo JSON */ }
+
+    if (!res.ok) {
+        throw new ApiError((data && data.message) || `Erro ${res.status}`, res.status);
+    }
+    return data;
+}
+
+export const api = {
+    // Funcionários
+    listarFuncionarios: () => chamar('/api/funcionarios', { totem: true }),
+    listarFuncionariosTodos: () => chamar('/api/funcionarios/todos', { admin: true }),
+    criarFuncionario: (dados) => chamar('/api/funcionarios', { method: 'POST', body: dados, admin: true }),
+    atualizarRegrasAlmoco: (id, dados) => chamar(`/api/funcionarios/${id}/regras-almoco`, { method: 'POST', body: dados, admin: true }),
+    atualizarAtivo: (id, ativo) => chamar(`/api/funcionarios/${id}/ativo`, { method: 'POST', body: { ativo }, admin: true }),
+    atualizarRegime: (id, regime) => chamar(`/api/funcionarios/${id}/regime`, { method: 'POST', body: { regime }, admin: true }),
+    removerFuncionario: (id) => chamar(`/api/funcionarios/${id}`, { method: 'DELETE', admin: true }),
+    salvarJornada: (id, jornada) => chamar(`/api/funcionarios/${id}/jornada`, { method: 'POST', body: jornada, admin: true }),
+    cadastrarBiometria: (id, descritor) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'POST', body: { descritor }, admin: true }),
+    removerBiometria: (id) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'DELETE', admin: true }),
+    resumoBiometria: () => chamar('/api/funcionarios/biometria/resumo', { admin: true }),
+    atualizarDadosCadastrais: (id, dados) => chamar(`/api/funcionarios/${id}/dados-cadastrais`, { method: 'POST', body: dados, admin: true }),
+
+    // Ponto (totem)
+    baterPonto: (funcionario_id, tipo) => chamar('/api/ponto', { method: 'POST', body: { funcionario_id, tipo }, totem: true }),
+    reconhecerRosto: (descritor) => chamar('/api/reconhecer-rosto', { method: 'POST', body: { descritor }, totem: true }),
+    meuHistorico: (id) => chamar(`/api/meu-historico/${id}`, { totem: true }),
+
+    // Ponto (admin)
+    ajustarPonto: (dados) => chamar('/api/ajuste-ponto', { method: 'POST', body: dados, admin: true }),
+    historicoGeral: (inicio, fim) => chamar(`/api/historico-geral?${new URLSearchParams({ inicio: inicio || '', fim: fim || '' })}`, { admin: true }),
+    pendencias: () => chamar('/api/pendencias', { admin: true }),
+    resumoDoDia: () => chamar('/api/dashboard-resumo', { admin: true }),
+
+    // Relatórios
+    relatorioCalculado: (inicio, fim) => chamar(`/api/relatorio-calculado?${new URLSearchParams({ inicio: inicio || '', fim: fim || '' })}`, { admin: true }),
+    relatorioIndividual: (id, inicio, fim) => chamar(`/api/relatorio-individual/${id}?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
+    meuRelatorioIndividual: (id, inicio, fim) => chamar(`/api/meu-relatorio/${id}?${new URLSearchParams({ inicio, fim })}`, { totem: true }),
+
+    // Feriados
+    listarFeriados: () => chamar('/api/feriados'),
+    criarFeriado: (dados) => chamar('/api/feriados', { method: 'POST', body: dados, admin: true }),
+    removerFeriado: (id) => chamar(`/api/feriados/${id}`, { method: 'DELETE', admin: true }),
+
+    // Ausências / faltas
+    calcularFaltas: (inicio, fim) => chamar(`/api/ausencias/faltas?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
+    justificarAusencia: (dados) => chamar('/api/ausencias', { method: 'POST', body: dados, admin: true }),
+
+    // Administração geral
+    listarConfigHorasExtras: () => chamar('/api/admin/horas-extras/config', { admin: true }),
+    salvarConfigHorasExtras: (tipo, percentual) => chamar('/api/admin/horas-extras/config', { method: 'POST', body: { tipo, percentual }, admin: true }),
+    criarAdmin: (dados) => chamar('/api/auth/admin/criar', { method: 'POST', body: dados, admin: true }),
+    listarAdmins: () => chamar('/api/auth/admin/listar', { admin: true }),
+    trocarSenhaTotem: (nova_senha) => chamar('/api/auth/totem/trocar-senha', { method: 'POST', body: { nova_senha }, admin: true }),
+
+    // Férias (simplificada)
+    listarFerias: () => chamar('/api/ferias', { admin: true }),
+    feriasAgora: () => chamar('/api/ferias/agora', { admin: true }),
+    feriasDoFuncionario: (id) => chamar(`/api/ferias/funcionario/${id}`, { admin: true }),
+    registrarFerias: (dados) => chamar('/api/ferias', { method: 'POST', body: dados, admin: true }),
+    removerFerias: (id) => chamar(`/api/ferias/${id}`, { method: 'DELETE', admin: true }),
+
+    // Espelho de ponto
+    buscarConfirmacaoEspelho: (funcionarioId, mes) => chamar(`/api/espelho/confirmacao/${funcionarioId}?mes=${mes}`, { totem: true }),
+    confirmarEspelho: (funcionario_id, mes_referencia) => chamar('/api/espelho/confirmar', { method: 'POST', body: { funcionario_id, mes_referencia }, totem: true }),
+
+    // People Analytics
+    indicadoresGerais: (inicio, fim) => chamar(`/api/analytics/indicadores?${new URLSearchParams({ inicio, fim })}`, { admin: true })
+};
+
+export { ApiError };

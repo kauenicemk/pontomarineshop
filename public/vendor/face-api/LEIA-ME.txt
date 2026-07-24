@@ -1,0 +1,10 @@
+Esta pasta fica vazia até você rodar:
+
+    npm run setup:biometria
+
+Isso baixa a biblioteca face-api.js e os modelos treinados (detecção de rosto, pontos
+faciais e reconhecimento) e coloca os arquivos certos aqui dentro. Não precisa mexer
+manualmente — é só rodar o comando com internet disponível.
+
+Enquanto esses arquivos não existirem, o reconhecimento facial fica automaticamente
+desativado e o sistema usa normalmente a seleção manual no mural de bater ponto.

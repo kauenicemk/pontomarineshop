@@ -406,6 +406,8 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
     padding: 20px; margin-bottom: 18px; box-shadow: var(--sombra-suave);
 }
 .card h2 { margin: 0 0 14px; font-size: 16px; }
+.card-perigo { border-color: rgba(242, 84, 91, .35); }
+.card-perigo h2 { color: var(--vermelho); }
 .card h3 { font-size: 14px; margin: 0 0 10px; }
 
 .filtros { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
@@ -421,8 +423,24 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 .badge-desligado { font-size: 11px; background: rgba(242, 84, 91, .16); color: var(--vermelho); padding: 2px 6px; border-radius: 4px; }
 
 .config-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--raio-sm); margin-bottom: 8px; font-size: 13px; }
-.config-row-funcionario { border: 1px solid var(--border); border-radius: var(--raio); padding: 16px; margin-bottom: 12px; background: var(--card-2); }
+.config-row-funcionario { border: 1px solid var(--border); border-radius: var(--raio); padding: 16px; margin-bottom: 10px; background: var(--card-2); overflow: hidden; }
 .config-row-funcionario.inativo { opacity: .55; }
+/* Quando o funcionário é uma gaveta (Configurar Horários), o padding fica por conta do header/corpo */
+.config-row-funcionario:has(.config-gaveta-header) { padding: 0; }
+
+/* Gaveta por funcionário — fechada por padrão pra não poluir a tela */
+.config-gaveta-header {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: none; border: none; color: var(--texto); text-align: left;
+    padding: 14px 16px; font-size: 14px; font-family: inherit; min-height: 52px;
+    transition: background .15s ease;
+}
+.config-gaveta-header:hover { background: rgba(255, 255, 255, .03); }
+.config-gaveta-titulo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.config-gaveta-meta { display: flex; align-items: center; gap: 8px; color: var(--texto-mudo); font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.config-gaveta-seta { width: 16px; height: 16px; transition: transform .2s ease; }
+.config-gaveta-header.aberta .config-gaveta-seta { transform: rotate(180deg); }
+.config-gaveta-corpo { padding: 4px 16px 16px; border-top: 1px solid var(--border); }
 .config-row-cabecalho { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; font-size: 14px; }
 .config-row-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .config-row-campos { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; font-size: 12px; color: var(--texto-mudo); }

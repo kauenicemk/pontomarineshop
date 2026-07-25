@@ -98,6 +98,7 @@ export const api = {
     justificarAusencia: (dados) => chamar('/api/ausencias', { method: 'POST', body: dados, admin: true }),
 
     // Administração geral
+    zerarDados: (confirmacao) => chamar('/api/admin/zerar-dados', { method: 'POST', body: { confirmacao }, admin: true }),
     listarConfigHorasExtras: () => chamar('/api/admin/horas-extras/config', { admin: true }),
     salvarConfigHorasExtras: (tipo, percentual) => chamar('/api/admin/horas-extras/config', { method: 'POST', body: { tipo, percentual }, admin: true }),
     criarAdmin: (dados) => chamar('/api/auth/admin/criar', { method: 'POST', body: dados, admin: true }),

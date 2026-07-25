@@ -2,6 +2,43 @@ import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
+import { confirmar } from '../confirmar.js';
+
+/**
+ * Zona de perigo: apagar todos os funcionários e dados vinculados.
+ * Dupla proteção: o botão só habilita depois de digitar ZERAR, e ainda
+ * abre um modal de confirmação antes de chamar a API.
+ */
+export function iniciarZonaDePerigo() {
+    const campo = document.getElementById('confirmar-zerar');
+    const btn = document.getElementById('btn-zerar-dados');
+    if (!campo || !btn || btn.dataset.iniciado) return;
+    btn.dataset.iniciado = '1';
+
+    campo.addEventListener('input', () => {
+        btn.disabled = campo.value.trim().toUpperCase() !== 'ZERAR';
+    });
+
+    btn.addEventListener('click', async () => {
+        const ok = await confirmar(
+            'Apagar TODOS os dados?',
+            'Todos os funcionários, registros de ponto, jornadas, ausências, férias e biometria serão apagados de forma permanente. Não tem como desfazer.',
+            { textoConfirmar: 'Apagar tudo', perigo: true }
+        );
+        if (!ok) return;
+
+        btn.disabled = true;
+        try {
+            const resp = await api.zerarDados(campo.value.trim().toUpperCase());
+            toast(resp.message, 'sucesso');
+            campo.value = '';
+            document.dispatchEvent(new CustomEvent('funcionario-cadastrado')); // recarrega listas/seletores
+        } catch (e) {
+            toast(e.message, 'erro');
+            btn.disabled = false;
+        }
+    });
+}
 
 export async function carregarConfigHorasExtras() {
     const container = document.getElementById('lista-config-horas-extras');

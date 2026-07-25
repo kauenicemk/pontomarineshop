@@ -47,17 +47,23 @@ export async function renderizarAbaConfig() {
 
     container.innerHTML = funcionarios.map((f) => `
         <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}">
-            <div class="config-row-cabecalho">
-                <span>
+            <button type="button" class="config-gaveta-header" aria-expanded="false">
+                <span class="config-gaveta-titulo">
                     <b>${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</b>
                     ${f.ativo ? '' : ' <span class="badge-desligado">Desligado</span>'}
                 </span>
-                <div class="config-row-acoes">
-                    ${f.regime === 'ESTAGIARIO' ? '<button class="action-btn btn-efetivar" style="width:auto; padding:6px 12px; margin:0; background:var(--verde);">🎓 Efetivar (virar CLT)</button>' : ''}
-                    ${f.ativo
-                        ? '<button class="action-btn btn-demitir" style="width:auto; padding:6px 12px; margin:0; background:var(--vermelho);">🗑️ Demitir</button>'
-                        : '<button class="action-btn btn-readmitir" style="width:auto; padding:6px 12px; margin:0;">↩️ Readmitir</button>'}
-                </div>
+                <span class="config-gaveta-meta">
+                    ${escapeHtml(ROTULOS_REGIME[f.regime] || f.regime)}
+                    <svg class="icone-svg config-gaveta-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+            </button>
+
+            <div class="config-gaveta-corpo escondido">
+            <div class="config-row-acoes" style="margin-bottom:12px;">
+                ${f.regime === 'ESTAGIARIO' ? '<button class="action-btn btn-efetivar" style="width:auto; padding:6px 12px; margin:0;">Efetivar (virar CLT)</button>' : ''}
+                ${f.ativo
+                    ? '<button class="action-btn btn-demitir" style="width:auto; padding:6px 12px; margin:0; border-color:rgba(242,84,91,.4); color:var(--vermelho);">Demitir</button>'
+                    : '<button class="action-btn btn-readmitir" style="width:auto; padding:6px 12px; margin:0;">Readmitir</button>'}
             </div>
 
             <div class="config-row-campos">
@@ -96,8 +102,20 @@ export async function renderizarAbaConfig() {
             </div>
 
             <button class="action-btn btn-salvar-linha" style="width:auto; padding:6px 14px; margin-top:10px;">Salvar tudo</button>
+            </div>
         </div>
     `).join('');
+
+    // Gavetas: cada funcionário abre/fecha ao tocar no cabeçalho (fechadas por padrão).
+    container.querySelectorAll('.config-gaveta-header').forEach((header) => {
+        header.addEventListener('click', () => {
+            const corpo = header.nextElementSibling;
+            const aberto = !corpo.classList.contains('escondido');
+            corpo.classList.toggle('escondido');
+            header.setAttribute('aria-expanded', String(!aberto));
+            header.classList.toggle('aberta', !aberto);
+        });
+    });
 
     container.querySelectorAll('.btn-salvar-linha').forEach((btn) => {
         btn.addEventListener('click', (ev) => salvarLinha(ev.target.closest('.config-row-funcionario')));

@@ -510,6 +510,22 @@
                     <button class="btn btn-secundario" id="btn-trocar-senha-totem" style="margin:0;">Trocar Senha do Totem</button>
                 </div>
             </div>
+
+            <div class="card card-perigo">
+                <h2>Zona de perigo</h2>
+                <p class="nota-rodape" style="margin:0 0 14px;">
+                    Apaga <b>todos os funcionários</b> e todo o histórico vinculado (pontos, jornadas,
+                    ausências, férias, biometria e confirmações de espelho). Contas de administrador,
+                    senha do totem, feriados e percentuais de hora extra são mantidos.
+                    Útil para limpar dados de teste antes do uso real — <b>não tem como desfazer</b>.
+                </p>
+                <div class="filtros">
+                    <label>Digite <b>ZERAR</b> para liberar
+                        <input type="text" class="campo" id="confirmar-zerar" placeholder="ZERAR" autocomplete="off" style="width:140px;">
+                    </label>
+                    <button class="btn btn-perigo-solido" id="btn-zerar-dados" style="margin:0;" disabled>Apagar todos os dados</button>
+                </div>
+            </div>
         </section>
 
     </main>

@@ -61,10 +61,16 @@
             <div class="totem-relogio" id="relogio">--:--:--</div>
             <div class="totem-data" id="relogio-data"></div>
         </div>
-        <nav class="totem-nav">
-            <button data-totem-aba="bater-ponto" class="ativo">Registrar ponto</button>
-            <button data-totem-aba="historico">Meu histórico</button>
-        </nav>
+        <div class="totem-acoes">
+            <nav class="totem-nav">
+                <button data-totem-aba="bater-ponto" class="ativo">Registrar ponto</button>
+                <button data-totem-aba="historico">Meu histórico</button>
+            </nav>
+            <button type="button" class="btn-sair-totem" id="btn-sair-totem" title="Sair do totem e voltar para a tela de senha">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sair
+            </button>
+        </div>
     </header>
 
     <main class="totem-corpo">
@@ -197,6 +203,10 @@
         </nav>
         <div class="admin-rodape-sidebar">
             <div class="nome-admin" id="nome-admin-logado"></div>
+            <a href="/" class="link-abrir-totem" title="Abrir o totem de registro de ponto">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Abrir totem
+            </a>
             <button id="btn-sair-admin">
                 <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Sair

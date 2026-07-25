@@ -2,6 +2,7 @@ import * as authMod from './auth.js';
 import { toast } from './toast.js';
 import { hojeISO, comBotaoOcupado } from './utils.js';
 import { montarLogos } from './brand.js';
+import { confirmar } from './confirmar.js';
 
 import * as baterPonto from './tabs/baterPonto.js';
 import * as historico from './tabs/historico.js';
@@ -77,6 +78,21 @@ function iniciarBotoesTotem() {
     baterPonto.iniciarBotoesDePonto();
     baterPonto.iniciarReconhecimentoFacial();
     espelho.iniciarEspelho();
+
+    // Sair do totem — desautoriza este tablet e volta pra tela de senha.
+    // Com confirmação: é uma ação rara (o totem fica logado por 90 dias) e desfazê-la
+    // exige a senha do totem de novo.
+    document.getElementById('btn-sair-totem')?.addEventListener('click', async () => {
+        const ok = await confirmar(
+            'Sair do totem?',
+            'Este tablet vai voltar para a tela de senha. Para registrar pontos novamente, será preciso digitar a senha do totem.',
+            { textoConfirmar: 'Sair', perigo: true }
+        );
+        if (!ok) return;
+        baterPonto.pararReconhecimentoFacial();
+        authMod.limparTotemToken();
+        window.location.reload();
+    });
 }
 
 async function mostrarAppTotem() {

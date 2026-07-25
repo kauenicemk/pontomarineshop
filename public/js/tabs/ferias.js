@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, hojeISO } from '../utils.js';
+import { confirmar } from '../confirmar.js';
 
 const ROTULOS_STATUS = {
     ativa: { texto: 'De férias agora', cor: 'var(--verde)' },
@@ -51,13 +52,18 @@ export async function carregarFerias() {
                 <td>${formatarData(f.data_fim)}</td>
                 <td>${escapeHtml(f.observacao || '---')}</td>
                 <td><span style="color:${situacao.cor}; font-weight:700;">${escapeHtml(situacao.texto)}</span></td>
-                <td><button class="btn-remover-ferias" data-id="${f.id}" data-nome="${escapeHtml(f.nome)}" title="Remover">🗑️</button></td>
+                <td><button class="action-btn btn-remover-ferias" data-id="${f.id}" data-nome="${escapeHtml(f.nome)}">Remover</button></td>
             </tr>`;
     }).join('');
 
     tbody.querySelectorAll('.btn-remover-ferias').forEach((btn) => {
         btn.addEventListener('click', async () => {
-            if (!confirm(`Remover o período de férias de ${btn.dataset.nome}?`)) return;
+            const ok = await confirmar(
+                `Remover férias de ${btn.dataset.nome}?`,
+                'Os dias do período deixam de contar como férias no histórico.',
+                { textoConfirmar: 'Remover', perigo: true }
+            );
+            if (!ok) return;
             try {
                 await api.removerFerias(btn.dataset.id);
                 toast('Período removido.', 'sucesso');

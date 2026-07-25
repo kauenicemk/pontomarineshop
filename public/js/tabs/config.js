@@ -2,6 +2,7 @@ import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, paraMinutos, minutosParaHoras } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
+import { confirmar } from '../confirmar.js';
 
 const ROTULOS_REGIME = { CLT: 'CLT', ESTAGIARIO: 'Estagiário', PJ: 'PJ' };
 const GRUPOS = [
@@ -184,9 +185,12 @@ async function efetivar(id) {
 async function demitir(linha) {
     const id = linha.dataset.id;
     const nome = linha.querySelector('b').textContent;
-    if (!confirm(`Confirma o desligamento de ${nome}?\n\nSe ele nunca bateu ponto, o cadastro é apagado. Se já tem histórico, o cadastro só é desativado (o histórico é mantido).`)) {
-        return;
-    }
+    const ok = await confirmar(
+        `Desligar ${nome}?`,
+        'Se ele nunca bateu ponto, o cadastro é apagado. Se já tem histórico, o cadastro só é desativado (o histórico é mantido).',
+        { textoConfirmar: 'Desligar', perigo: true }
+    );
+    if (!ok) return;
     try {
         const resp = await comAutorizacao(() => api.removerFuncionario(id));
         toast(resp.message, 'sucesso');

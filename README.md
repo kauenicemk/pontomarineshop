@@ -1,4 +1,4 @@
-# Ponto Gaveta Pro — v4
+# Ponto Marine Shop
 
 Sistema de controle de ponto: uso presencial/supervisionado, sem login individual, com toda
 ação administrativa protegida por uma senha de responsável verificada no backend.

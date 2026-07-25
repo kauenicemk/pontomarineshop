@@ -1,13 +1,13 @@
 import { api } from '../api.js';
 import { escapeHtml } from '../utils.js';
 
-function cartao(valor, rotulo, icone, cor) {
+/** Card clicável — leva direto pra aba onde o administrador vê os detalhes. */
+function cartao(valor, rotulo, cor, abaDestino) {
     return `
-        <div class="cartao-resumo-dia cor-${cor}">
-            <span class="icone-resumo">${icone}</span>
+        <button type="button" class="cartao-resumo-dia cor-${cor}" data-aba-destino="${abaDestino}" title="Ver detalhes">
             <span class="valor">${escapeHtml(String(valor))}</span>
             <span class="rotulo">${escapeHtml(rotulo)}</span>
-        </div>`;
+        </button>`;
 }
 
 function formatarMinutos(min) {
@@ -18,7 +18,11 @@ function formatarMinutos(min) {
 export async function carregarDashboard() {
     const container = document.getElementById('dashboard-resumo-dia');
     const dataEl = document.getElementById('dashboard-data');
-    container.innerHTML = '<p class="texto-vazio">Carregando...</p>';
+
+    // Skeleton só na primeira carga — nas atualizações automáticas mantém o conteúdo na tela
+    if (!container.querySelector('.cartao-resumo-dia')) {
+        container.innerHTML = Array(8).fill('<div class="skeleton"></div>').join('');
+    }
 
     let r;
     try {
@@ -31,13 +35,19 @@ export async function carregarDashboard() {
     dataEl.textContent = r.data.split('-').reverse().join('/');
 
     container.innerHTML = [
-        cartao(r.presentes, 'Presentes agora', '💼', 'verde'),
-        cartao(r.emIntervalo, 'Em intervalo', '🥪', 'amarelo'),
-        cartao(r.encerraramExpediente, 'Encerraram expediente', '🏁', 'ouro'),
-        cartao(r.atrasados, 'Atrasados hoje', '⏰', r.atrasados > 0 ? 'vermelho' : 'verde'),
-        cartao(r.aindaNaoChegaram, 'Ainda não bateram ponto', '❓', r.aindaNaoChegaram > 0 ? 'amarelo' : 'verde'),
-        cartao(formatarMinutos(r.horasExtraHojeMinutos), 'Horas extras hoje', '📈', 'ouro'),
-        cartao(r.deFerias, 'De férias', '🏖️', 'azul'),
-        cartao(r.totalAtivos, 'Colaboradores ativos', '👥', 'verde')
+        cartao(r.presentes, 'Presentes agora', 'verde', 'pendencias'),
+        cartao(r.emIntervalo, 'Em intervalo', 'amarelo', 'pendencias'),
+        cartao(r.encerraramExpediente, 'Encerraram expediente', 'ouro', 'pendencias'),
+        cartao(r.atrasados, 'Atrasados hoje', r.atrasados > 0 ? 'vermelho' : 'verde', 'pendencias'),
+        cartao(r.aindaNaoChegaram, 'Ainda não bateram ponto', r.aindaNaoChegaram > 0 ? 'amarelo' : 'verde', 'pendencias'),
+        cartao(formatarMinutos(r.horasExtraHojeMinutos), 'Horas extras hoje', 'ouro', 'banco-horas'),
+        cartao(r.deFerias, 'De férias', 'azul', 'ferias'),
+        cartao(r.totalAtivos, 'Colaboradores ativos', 'verde', 'config')
     ].join('');
+
+    container.querySelectorAll('[data-aba-destino]').forEach((card) => {
+        card.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('navegar-admin', { detail: card.dataset.abaDestino }));
+        });
+    });
 }

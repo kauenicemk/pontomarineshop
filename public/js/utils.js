@@ -10,6 +10,25 @@ export function escapeHtml(texto) {
         .replace(/'/g, '&#039;');
 }
 
+/**
+ * Desabilita o botão e mostra um spinner enquanto a ação roda — evita duplo clique
+ * (ex.: cadastrar o mesmo funcionário duas vezes) e dá feedback de que algo acontece.
+ */
+export async function comBotaoOcupado(botao, acao) {
+    if (!botao || botao.disabled) return;
+    const conteudoOriginal = botao.innerHTML;
+    botao.disabled = true;
+    botao.classList.add('btn-ocupado');
+    botao.innerHTML = '<span class="spinner" aria-hidden="true"></span> Salvando...';
+    try {
+        await acao();
+    } finally {
+        botao.disabled = false;
+        botao.classList.remove('btn-ocupado');
+        botao.innerHTML = conteudoOriginal;
+    }
+}
+
 export function primeiroNome(nomeCompleto) {
     return (nomeCompleto || '').split(' ')[0];
 }

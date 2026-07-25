@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ponto Gaveta Pro</title>
+<meta name="theme-color" content="#0a1120">
+<meta name="description" content="Ponto Marine Shop — sistema de controle de ponto da Marine Shop">
+<title>Ponto Marine Shop</title>
 <link rel="stylesheet" href="css/styles.css">
 <!--
   face-api.js carregado LOCALMENTE (nunca de CDN). Se o arquivo abaixo não existir ainda, o
@@ -17,14 +19,14 @@
 <!-- ===================== LOGIN DO TOTEM ===================== -->
 <div id="tela-totem-login" class="tela-login escondido">
     <div class="cartao-login">
-        <div class="marca">⏱️</div>
+        <div data-logo="grande"></div>
         <h1>Totem de Ponto</h1>
         <p class="subtitulo">Digite a senha configurada para este tablet</p>
         <form id="form-totem-login">
             <label class="rotulo">Senha do totem
                 <input type="password" class="campo" id="input-totem-senha" inputmode="numeric" autocomplete="off" autofocus>
             </label>
-            <p class="erro-msg" id="erro-totem-login"></p>
+            <p class="erro-msg" id="erro-totem-login" role="alert"></p>
             <button type="submit" class="btn btn-principal">Entrar</button>
         </form>
         <a href="/admin" class="link-discreto">Sou administrador</a>
@@ -34,7 +36,7 @@
 <!-- ===================== LOGIN DO ADMINISTRADOR ===================== -->
 <div id="tela-admin-login" class="tela-login escondido">
     <div class="cartao-login">
-        <div class="marca">👑</div>
+        <div data-logo="grande"></div>
         <h1>Painel Administrativo</h1>
         <p class="subtitulo">Entre com sua conta de administrador</p>
         <form id="form-admin-login">
@@ -44,7 +46,7 @@
             <label class="rotulo">Senha
                 <input type="password" class="campo" id="input-admin-senha" autocomplete="current-password">
             </label>
-            <p class="erro-msg" id="erro-admin-login"></p>
+            <p class="erro-msg" id="erro-admin-login" role="alert"></p>
             <button type="submit" class="btn btn-principal">Entrar</button>
         </form>
         <a href="/" class="link-discreto">Voltar para o totem</a>
@@ -54,30 +56,63 @@
 <!-- ===================== TOTEM (uso no tablet, dentro da empresa) ===================== -->
 <div id="app-totem" class="app-totem escondido">
     <header class="totem-topo">
-        <div class="totem-marca"><span class="ponto-ouro">⏱</span> Ponto</div>
-        <div class="totem-relogio" id="relogio">--:--:--</div>
+        <div data-logo></div>
+        <div class="totem-datahora">
+            <div class="totem-relogio" id="relogio">--:--:--</div>
+            <div class="totem-data" id="relogio-data"></div>
+        </div>
         <nav class="totem-nav">
-            <button data-totem-aba="bater-ponto" class="ativo">Bater Ponto</button>
-            <button data-totem-aba="historico">Meu Histórico</button>
+            <button data-totem-aba="bater-ponto" class="ativo">Registrar ponto</button>
+            <button data-totem-aba="historico">Meu histórico</button>
         </nav>
     </header>
 
     <main class="totem-corpo">
         <section id="totem-bater-ponto" class="totem-tela ativa">
             <div class="totem-card-central">
-                <h2>Selecione seu nome</h2>
-                <p class="dica">Ou use o reconhecimento facial para identificação automática</p>
+                <div id="passo-identificacao">
+                    <h2>Quem é você?</h2>
+                    <p class="dica">Toque no seu nome ou use o reconhecimento facial</p>
 
-                <button class="btn-camera-totem" id="btn-toggle-reconhecimento">📷 Usar Reconhecimento Facial</button>
+                    <button class="btn-camera-totem" id="btn-toggle-reconhecimento">
+                        <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Usar reconhecimento facial
+                    </button>
 
-                <input type="text" id="busca-funcionario" class="campo" placeholder="🔎 Buscar pelo nome..." style="margin-top:16px;">
-                <div class="mural-emojis" id="mural-funcionarios"></div>
+                    <input type="text" id="busca-funcionario" class="campo" placeholder="Buscar pelo nome..." autocomplete="off">
+                    <div class="mural-emojis" id="mural-funcionarios"></div>
+                </div>
+
+                <div class="banner-selecionado escondido" id="banner-selecionado">
+                    <div class="banner-selecionado-info">
+                        <span class="banner-selecionado-emoji" id="banner-selecionado-emoji" aria-hidden="true"></span>
+                        <div class="banner-selecionado-textos">
+                            <span class="banner-selecionado-nome" id="banner-selecionado-nome"></span>
+                            <span class="banner-selecionado-status" id="banner-selecionado-status"></span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-trocar" id="btn-trocar-funcionario">Trocar</button>
+                </div>
+
+                <p class="dica-registro" id="dica-registro">Selecione seu nome acima para liberar os botões de registro</p>
 
                 <div class="botoes-ponto-totem">
-                    <button class="btn-ponto-grande cor-entrada btn-ponto" data-tipo="Entrada"><span class="icone">🛫</span>Entrada</button>
-                    <button class="btn-ponto-grande cor-almoco-saida btn-ponto" data-tipo="Saída Almoço"><span class="icone">🥪</span>Saída Almoço</button>
-                    <button class="btn-ponto-grande cor-almoco-volta btn-ponto" data-tipo="Retorno Almoço"><span class="icone">📥</span>Retorno Almoço</button>
-                    <button class="btn-ponto-grande cor-saida btn-ponto" data-tipo="Saída Final"><span class="icone">🛬</span>Saída Final</button>
+                    <button class="btn-ponto-grande cor-entrada btn-ponto" data-tipo="Entrada" disabled>
+                        <svg class="icone-svg icone-ponto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Entrada
+                    </button>
+                    <button class="btn-ponto-grande cor-almoco-saida btn-ponto" data-tipo="Saída Almoço" disabled>
+                        <svg class="icone-svg icone-ponto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                        Saída Almoço
+                    </button>
+                    <button class="btn-ponto-grande cor-almoco-volta btn-ponto" data-tipo="Retorno Almoço" disabled>
+                        <svg class="icone-svg icone-ponto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        Retorno Almoço
+                    </button>
+                    <button class="btn-ponto-grande cor-saida btn-ponto" data-tipo="Saída Final" disabled>
+                        <svg class="icone-svg icone-ponto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Saída Final
+                    </button>
                 </div>
             </div>
         </section>
@@ -85,6 +120,7 @@
         <section id="totem-historico" class="totem-tela">
             <div class="totem-card-central">
                 <h2>Meu Histórico</h2>
+                <p class="dica">Selecione seu perfil para consultar seus registros</p>
                 <select id="select-f-hist" class="campo"></select>
                 <div id="dados-individuais" style="margin-top:16px;"></div>
                 <div class="tabela-wrap" style="margin-top:12px;">
@@ -101,24 +137,70 @@
 <!-- ===================== PAINEL ADMINISTRATIVO ===================== -->
 <div id="app-admin" class="app-admin escondido">
     <aside class="admin-sidebar">
-        <div class="admin-marca"><span class="ponto-ouro">⏱</span> Ponto</div>
-        <nav class="admin-nav">
-            <button data-admin-aba="dashboard" class="ativo"><span class="icone-nav">🏠</span>Início</button>
-            <button data-admin-aba="gestor"><span class="icone-nav">📊</span>Painel do Gestor</button>
-            <button data-admin-aba="pendencias"><span class="icone-nav">🔔</span>Pendências</button>
-            <button data-admin-aba="banco-horas"><span class="icone-nav">📈</span>Banco de Horas</button>
-            <button data-admin-aba="individual"><span class="icone-nav">🧾</span>Relatório Individual</button>
-            <button data-admin-aba="ferias"><span class="icone-nav">🏖️</span>Férias</button>
-            <button data-admin-aba="indicadores"><span class="icone-nav">📊</span>Indicadores</button>
-            <button data-admin-aba="faltas"><span class="icone-nav">📋</span>Faltas</button>
-            <button data-admin-aba="feriados"><span class="icone-nav">🎉</span>Feriados</button>
-            <button data-admin-aba="config"><span class="icone-nav">⚙️</span>Configurar Horários</button>
-            <button data-admin-aba="biometria"><span class="icone-nav">📷</span>Biometria Facial</button>
-            <button data-admin-aba="admin-geral"><span class="icone-nav">🛠️</span>Administração Geral</button>
+        <div data-logo></div>
+        <nav class="admin-nav" aria-label="Menu principal">
+            <p class="admin-nav-grupo">Visão geral</p>
+            <button data-admin-aba="dashboard" class="ativo">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Início
+            </button>
+            <button data-admin-aba="pendencias">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                Pendências
+            </button>
+
+            <p class="admin-nav-grupo">Relatórios</p>
+            <button data-admin-aba="gestor">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                Painel do Gestor
+            </button>
+            <button data-admin-aba="banco-horas">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+                Banco de Horas
+            </button>
+            <button data-admin-aba="individual">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Relatório Individual
+            </button>
+            <button data-admin-aba="indicadores">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                Indicadores
+            </button>
+
+            <p class="admin-nav-grupo">Gestão</p>
+            <button data-admin-aba="ferias">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                Férias
+            </button>
+            <button data-admin-aba="faltas">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="10" y1="14" x2="14" y2="18"/><line x1="14" y1="14" x2="10" y2="18"/></svg>
+                Faltas
+            </button>
+            <button data-admin-aba="feriados">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Feriados
+            </button>
+
+            <p class="admin-nav-grupo">Sistema</p>
+            <button data-admin-aba="config">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Configurar Horários
+            </button>
+            <button data-admin-aba="biometria">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Biometria Facial
+            </button>
+            <button data-admin-aba="admin-geral">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                Administração Geral
+            </button>
         </nav>
         <div class="admin-rodape-sidebar">
             <div class="nome-admin" id="nome-admin-logado"></div>
-            <button id="btn-sair-admin">Sair</button>
+            <button id="btn-sair-admin">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sair
+            </button>
         </div>
     </aside>
 
@@ -127,19 +209,46 @@
         <!-- ---------- Dashboard (tela inicial) ---------- -->
         <section id="admin-dashboard" class="admin-tela ativa">
             <h1 class="admin-secao-titulo">Resumo do dia</h1>
-            <p class="admin-secao-subtitulo">Atualizado agora — <span id="dashboard-data"></span></p>
+            <p class="admin-secao-subtitulo">Atualiza automaticamente a cada 30 segundos — <span id="dashboard-data"></span></p>
             <div class="grade-resumo-dia" id="dashboard-resumo-dia"></div>
 
-            <div class="card">
-                <h2>🔔 Pendências de hoje</h2>
-                <div id="lista-presentes-agora"></div>
-                <div id="lista-nao-chegaram" style="margin-top:12px;"></div>
+            <div class="colunas-dashboard">
+                <div class="card">
+                    <h2><span class="ponto-status verde" aria-hidden="true"></span>Em expediente agora</h2>
+                    <div id="lista-presentes-agora"></div>
+                </div>
+                <div class="card">
+                    <h2><span class="ponto-status vermelho" aria-hidden="true"></span>Ainda não bateram ponto</h2>
+                    <div id="lista-nao-chegaram"></div>
+                </div>
             </div>
         </section>
 
         <!-- ---------- Painel do Gestor ---------- -->
         <section id="admin-gestor" class="admin-tela">
             <h1 class="admin-secao-titulo">Painel do Gestor</h1>
+            <p class="admin-secao-subtitulo">Relatório consolidado, ajustes manuais e histórico geral</p>
+            <div class="card">
+                <h2>Relatório Consolidado</h2>
+                <div class="filtros">
+                    <label>De <input type="date" id="filtro-inicio"></label>
+                    <label>Até <input type="date" id="filtro-fim"></label>
+                    <button class="btn btn-principal" id="btn-filtrar-gestor" style="margin:0;">Filtrar</button>
+                    <button class="btn btn-secundario" id="btn-exportar-csv" style="margin:0;">Exportar CSV</button>
+                </div>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th><th>Data</th><th>Entrada</th><th>S.Almoço</th><th>V.Almoço</th><th>Saída</th>
+                                <th>Trabalhado</th><th>Atraso</th><th>Saldo</th><th>Extra 60%</th><th>Extra 100%</th><th>H. Noturna</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-gestor-linhas"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>Ajuste Manual de Ponto</h2>
                 <div class="filtros">
@@ -158,28 +267,8 @@
                     </label>
                 </div>
                 <input type="text" id="ajuste-justificativa" class="campo" placeholder="Justificativa do ajuste (obrigatória)" style="margin-bottom:10px;">
-                <button class="btn btn-principal" id="btn-salvar-ajuste">Salvar Ajuste (fica registrado no log de auditoria)</button>
-            </div>
-
-            <div class="card">
-                <h2>Relatório Consolidado</h2>
-                <div class="filtros">
-                    <label>De <input type="date" id="filtro-inicio"></label>
-                    <label>Até <input type="date" id="filtro-fim"></label>
-                    <button class="btn btn-principal" id="btn-filtrar-gestor" style="margin:0;">Filtrar</button>
-                    <button class="btn btn-secundario" id="btn-exportar-csv" style="margin:0;">⬇ Exportar CSV</button>
-                </div>
-                <div class="tabela-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Colaborador</th><th>Data</th><th>Entrada</th><th>S.Almoço</th><th>V.Almoço</th><th>Saída</th>
-                                <th>Trabalhado</th><th>Atraso</th><th>Saldo</th><th>Extra 60%</th><th>Extra 100%</th><th>H. Noturna</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-gestor-linhas"></tbody>
-                    </table>
-                </div>
+                <button class="btn btn-principal" id="btn-salvar-ajuste">Salvar Ajuste</button>
+                <p class="nota-rodape">Todo ajuste manual fica registrado no log de auditoria.</p>
             </div>
 
             <div class="card">
@@ -191,12 +280,13 @@
         <!-- ---------- Pendências ---------- -->
         <section id="admin-pendencias" class="admin-tela">
             <h1 class="admin-secao-titulo">Pendências</h1>
+            <p class="admin-secao-subtitulo">Situação de cada colaborador neste momento</p>
             <div class="card">
-                <h2>🟢 Em expediente agora</h2>
+                <h2><span class="ponto-status verde" aria-hidden="true"></span>Em expediente agora</h2>
                 <div id="lista-presentes-agora-sub"></div>
             </div>
             <div class="card">
-                <h2>🔴 Ainda não bateram ponto hoje</h2>
+                <h2><span class="ponto-status vermelho" aria-hidden="true"></span>Ainda não bateram ponto hoje</h2>
                 <div id="lista-nao-chegaram-sub"></div>
             </div>
         </section>
@@ -214,7 +304,7 @@
                     <canvas id="grafico-banco-horas"></canvas>
                     <div id="banco-tooltip" class="banco-tooltip" style="display:none;"></div>
                 </div>
-                <p id="banco-horas-legenda" style="color:var(--texto-mudo); font-size:12px; margin-top:8px;"></p>
+                <p id="banco-horas-legenda" class="nota-rodape"></p>
             </div>
         </section>
 
@@ -227,8 +317,8 @@
                     <label>Colaborador <select id="individual-colaborador"></select></label>
                     <label>Mês <input type="month" id="individual-mes"></label>
                     <button class="btn btn-principal" id="btn-filtrar-individual" style="margin:0;">Gerar Relatório</button>
-                    <button class="btn btn-secundario" id="btn-exportar-individual" style="margin:0;">⬇ Exportar CSV</button>
-                    <button class="btn btn-secundario" id="btn-ver-espelho-individual" style="margin:0;">📄 Ver/Imprimir Espelho</button>
+                    <button class="btn btn-secundario" id="btn-exportar-individual" style="margin:0;">Exportar CSV</button>
+                    <button class="btn btn-secundario" id="btn-ver-espelho-individual" style="margin:0;">Ver/Imprimir Espelho</button>
                 </div>
                 <div id="individual-resumo"></div>
             </div>
@@ -380,7 +470,7 @@
                     <label>Departamento (opcional) <input type="text" class="campo" id="novo-func-departamento" placeholder="Ex: Comercial"></label>
                 </div>
                 <button class="btn btn-principal" id="btn-cadastrar-funcionario">Cadastrar Funcionário</button>
-                <p style="color:var(--texto-mudo); font-size:12px; margin-top:8px;">
+                <p class="nota-rodape">
                     A jornada (6 dias) já sai com valores padrão pro regime escolhido — ajuste fino em "Configurar Horários".
                 </p>
             </div>
@@ -392,7 +482,7 @@
 
             <div class="card">
                 <h2>Acesso ao Sistema</h2>
-                <p style="color:var(--texto-mudo); font-size:12.5px; margin-bottom:14px;">
+                <p class="nota-rodape" style="margin-bottom:14px;">
                     Cada administrador tem sua própria conta (e-mail + senha). A senha do totem é única
                     e compartilhada só com quem configura o tablet físico.
                 </p>
@@ -419,22 +509,22 @@
 <div class="modal-overlay" id="modalCameraPonto">
     <div class="modal-box modal-box-camera">
         <button class="btn-fechar-x" id="btn-fechar-camera-ponto" aria-label="Fechar">✕</button>
-        <h3>📷 Reconhecimento Facial</h3>
+        <h3>Reconhecimento Facial</h3>
 
         <div class="video-wrap">
             <video id="video-reconhecimento" autoplay muted playsinline></video>
             <canvas id="overlay-reconhecimento"></canvas>
         </div>
-        <p id="status-reconhecimento">Carregando...</p>
+        <p id="status-reconhecimento" role="status">Carregando...</p>
 
         <div id="reconhecimento-resultado" style="display:none;">
-            <div class="reconhecido-emoji" id="reconhecido-emoji"></div>
+            <div class="reconhecido-emoji" id="reconhecido-emoji" aria-hidden="true"></div>
             <div class="reconhecido-nome" id="reconhecido-nome"></div>
             <div class="botoes-ponto-totem">
-                <button class="btn-ponto-grande cor-entrada btn-ponto-modal" data-tipo="Entrada"><span class="icone">🛫</span>Entrada</button>
-                <button class="btn-ponto-grande cor-almoco-saida btn-ponto-modal" data-tipo="Saída Almoço"><span class="icone">🥪</span>Saída Almoço</button>
-                <button class="btn-ponto-grande cor-almoco-volta btn-ponto-modal" data-tipo="Retorno Almoço"><span class="icone">📥</span>Retorno Almoço</button>
-                <button class="btn-ponto-grande cor-saida btn-ponto-modal" data-tipo="Saída Final"><span class="icone">🛬</span>Saída Final</button>
+                <button class="btn-ponto-grande cor-entrada btn-ponto-modal" data-tipo="Entrada">Entrada</button>
+                <button class="btn-ponto-grande cor-almoco-saida btn-ponto-modal" data-tipo="Saída Almoço">Saída Almoço</button>
+                <button class="btn-ponto-grande cor-almoco-volta btn-ponto-modal" data-tipo="Retorno Almoço">Retorno Almoço</button>
+                <button class="btn-ponto-grande cor-saida btn-ponto-modal" data-tipo="Saída Final">Saída Final</button>
             </div>
         </div>
 
@@ -443,17 +533,21 @@
 </div>
 
 <div class="modal-overlay" id="modalPonto">
-    <div class="modal-box">
-        <h3>✅ Ponto Registrado!</h3>
+    <div class="modal-box modal-sucesso" role="status">
+        <div class="sucesso-check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Ponto registrado</h3>
         <p id="modal-texto"></p>
-        <button class="btn btn-principal" id="btn-fechar-modal-ponto" style="width:100%;">Fechar</button>
+        <p class="sucesso-contagem" id="sucesso-contagem"></p>
+        <button class="btn btn-principal" id="btn-fechar-modal-ponto" style="width:100%;">OK</button>
     </div>
 </div>
 
 <div class="modal-overlay" id="modalJustificarAusencia">
     <div class="modal-box">
         <h3>Justificar Ausência</h3>
-        <p id="justificar-texto-info" style="color:var(--texto-mudo); font-size:12.5px;"></p>
+        <p id="justificar-texto-info" class="nota-rodape"></p>
         <input type="hidden" id="justificar-funcionario-id">
         <input type="hidden" id="justificar-data">
         <select id="justificar-tipo" class="campo" style="margin-bottom:8px;">
@@ -476,7 +570,7 @@
         <button class="btn-fechar-x" id="btn-fechar-espelho" aria-label="Fechar">✕</button>
         <div class="espelho-controles">
             <label>Mês <input type="month" id="espelho-mes"></label>
-            <button class="btn btn-principal" id="btn-imprimir-espelho" style="margin:0;">🖨️ Imprimir / Salvar PDF</button>
+            <button class="btn btn-principal" id="btn-imprimir-espelho" style="margin:0;">Imprimir / Salvar PDF</button>
         </div>
         <div id="espelho-conteudo"></div>
     </div>

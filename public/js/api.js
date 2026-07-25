@@ -1,4 +1,7 @@
-import { getAdminToken, getTotemToken } from './auth.js';
+import { getAdminToken, getTotemToken, limparAdminToken } from './auth.js';
+import { toast } from './toast.js';
+
+let avisoSessaoExibido = false;
 
 class ApiError extends Error {
     constructor(message, status) {
@@ -33,6 +36,16 @@ async function chamar(caminho, { method = 'GET', body, admin = false, totem = fa
     try { data = await res.json(); } catch (_) { /* resposta sem corpo JSON */ }
 
     if (!res.ok) {
+        // Sessão do administrador expirada/inválida: em vez de cada clique falhar com um
+        // erro genérico, avisa uma única vez e volta pra tela de login.
+        if (res.status === 401 && admin && getAdminToken()) {
+            limparAdminToken();
+            if (!avisoSessaoExibido) {
+                avisoSessaoExibido = true;
+                toast('Sua sessão expirou. Faça login novamente.', 'erro');
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        }
         throw new ApiError((data && data.message) || `Erro ${res.status}`, res.status);
     }
     return data;

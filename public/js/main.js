@@ -1,6 +1,7 @@
 import * as authMod from './auth.js';
 import { toast } from './toast.js';
-import { hojeISO } from './utils.js';
+import { hojeISO, comBotaoOcupado } from './utils.js';
+import { montarLogos } from './brand.js';
 
 import * as baterPonto from './tabs/baterPonto.js';
 import * as historico from './tabs/historico.js';
@@ -27,11 +28,18 @@ let subAbaAdminAtual = 'dashboard';
 
 function iniciarRelogio() {
     const el = document.getElementById('relogio');
+    const elData = document.getElementById('relogio-data');
     if (!el) return;
     function atualizar() {
+        const agora = new Date();
         el.textContent = new Intl.DateTimeFormat('pt-BR', {
             timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit'
-        }).format(new Date());
+        }).format(agora);
+        if (elData) {
+            elData.textContent = new Intl.DateTimeFormat('pt-BR', {
+                timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: 'long'
+            }).format(agora);
+        }
     }
     atualizar();
     setInterval(atualizar, 1000);
@@ -63,7 +71,7 @@ function iniciarNavegacaoTotem() {
 
 function iniciarBotoesTotem() {
     document.getElementById('btn-fechar-modal-ponto')?.addEventListener('click', () => {
-        document.getElementById('modalPonto').style.display = 'none';
+        baterPonto.fecharModalSucesso();
     });
     baterPonto.iniciarBusca();
     baterPonto.iniciarBotoesDePonto();
@@ -162,10 +170,16 @@ function iniciarNavegacaoAdmin() {
     document.querySelectorAll('.admin-nav [data-admin-aba]').forEach((btn) => {
         btn.addEventListener('click', () => mudarAdminAba(btn.dataset.adminAba, btn));
     });
+
+    // Cards do dashboard navegam para a aba relacionada (evento vindo de dashboard.js)
+    document.addEventListener('navegar-admin', (ev) => {
+        const alvo = document.querySelector(`.admin-nav [data-admin-aba="${ev.detail}"]`);
+        if (alvo) mudarAdminAba(ev.detail, alvo);
+    });
 }
 
 function iniciarBotoesAdmin() {
-    document.getElementById('btn-salvar-ajuste')?.addEventListener('click', () => gestor.salvarAjusteManual());
+    document.getElementById('btn-salvar-ajuste')?.addEventListener('click', (ev) => comBotaoOcupado(ev.currentTarget, () => gestor.salvarAjusteManual()));
     document.getElementById('btn-exportar-csv')?.addEventListener('click', () => gestor.exportarPlanilhaParaExcel());
     document.getElementById('btn-filtrar-gestor')?.addEventListener('click', () => gestor.renderizarRelatorioGestor());
 
@@ -182,20 +196,20 @@ function iniciarBotoesAdmin() {
     document.getElementById('btn-ver-espelho-individual')?.addEventListener('click', () => relatorioIndividual.abrirEspelhoDoIndividual());
     document.getElementById('individual-colaborador')?.addEventListener('change', () => relatorioIndividual.carregarRelatorioIndividual());
 
-    document.getElementById('btn-registrar-ferias')?.addEventListener('click', () => ferias.registrarFerias());
+    document.getElementById('btn-registrar-ferias')?.addEventListener('click', (ev) => comBotaoOcupado(ev.currentTarget, () => ferias.registrarFerias()));
 
     document.getElementById('btn-filtrar-indicadores')?.addEventListener('click', () => analytics.carregarIndicadores());
     document.getElementById('indicadores-mes')?.addEventListener('change', () => analytics.carregarIndicadores());
 
-    document.getElementById('btn-salvar-feriado')?.addEventListener('click', () => feriados.salvarNovoFeriado());
+    document.getElementById('btn-salvar-feriado')?.addEventListener('click', (ev) => comBotaoOcupado(ev.currentTarget, () => feriados.salvarNovoFeriado()));
     document.getElementById('btn-filtrar-faltas')?.addEventListener('click', () => faltas.carregarFaltas());
     document.getElementById('btn-confirmar-justificativa')?.addEventListener('click', () => faltas.confirmarJustificativa());
     document.getElementById('btn-cancelar-justificativa')?.addEventListener('click', () => {
         document.getElementById('modalJustificarAusencia').style.display = 'none';
     });
 
-    document.getElementById('btn-cadastrar-funcionario')?.addEventListener('click', () => admin.cadastrarFuncionario());
-    document.getElementById('btn-criar-admin')?.addEventListener('click', () => admin.criarAdmin());
+    document.getElementById('btn-cadastrar-funcionario')?.addEventListener('click', (ev) => comBotaoOcupado(ev.currentTarget, () => admin.cadastrarFuncionario()));
+    document.getElementById('btn-criar-admin')?.addEventListener('click', (ev) => comBotaoOcupado(ev.currentTarget, () => admin.criarAdmin()));
     document.getElementById('btn-trocar-senha-totem')?.addEventListener('click', () => admin.trocarSenhaTotem());
 
     document.getElementById('btn-sair-admin')?.addEventListener('click', () => {
@@ -219,6 +233,11 @@ async function mostrarAppAdmin() {
 
     document.getElementById('ajuste-data').value = hojeISO();
     document.getElementById('feriado-data').value = hojeISO();
+
+    // Período padrão do Relatório Consolidado: mês atual até hoje (antes abria vazio)
+    const hoje = hojeISO();
+    document.getElementById('filtro-inicio').value = `${hoje.substring(0, 7)}-01`;
+    document.getElementById('filtro-fim').value = hoje;
 
     await recarregarFuncionariosDoAdmin();
     carregarConteudoAdminAba('dashboard');
@@ -251,9 +270,38 @@ async function iniciarModoAdmin() {
     iniciarLoginAdmin();
 }
 
+/* ===================== Fechamento de modais (ESC / clique no fundo) ===================== */
+
+const BOTAO_FECHAR_DO_MODAL = {
+    modalCameraPonto: 'btn-fechar-camera-ponto',
+    modalPonto: 'btn-fechar-modal-ponto',
+    modalJustificarAusencia: 'btn-cancelar-justificativa',
+    modalEspelho: 'btn-fechar-espelho'
+};
+
+function iniciarFechamentoModais() {
+    Object.entries(BOTAO_FECHAR_DO_MODAL).forEach(([idModal, idBotao]) => {
+        const overlay = document.getElementById(idModal);
+        if (!overlay) return;
+        overlay.addEventListener('click', (ev) => {
+            if (ev.target === overlay) document.getElementById(idBotao)?.click();
+        });
+    });
+
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Escape') return;
+        Object.entries(BOTAO_FECHAR_DO_MODAL).forEach(([idModal, idBotao]) => {
+            const overlay = document.getElementById(idModal);
+            if (overlay && overlay.style.display === 'flex') document.getElementById(idBotao)?.click();
+        });
+    });
+}
+
 /* ===================== Bootstrap ===================== */
 
 async function iniciar() {
+    montarLogos();
+    iniciarFechamentoModais();
     try {
         if (ehModoAdmin) {
             await iniciarModoAdmin();

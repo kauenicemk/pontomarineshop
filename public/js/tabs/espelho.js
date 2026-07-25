@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, mesAtualISO } from '../utils.js';
+import { BRAND } from '../brand.js';
 
 let funcionarioAtualId = null;
 let mesAtualRef = null;
@@ -64,6 +65,7 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
 
     conteudo.innerHTML = `
         <div class="espelho-cabecalho">
+            <p><b>${escapeHtml(BRAND.empresa)}</b> — ${escapeHtml(BRAND.nome)}</p>
             <h3>Espelho de Ponto — ${escapeHtml(nomeFuncionario)}</h3>
             <p>${escapeHtml(nomeDoMes(mesAtualRef))}</p>
         </div>

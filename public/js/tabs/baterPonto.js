@@ -1,10 +1,12 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
-import { escapeHtml, primeiroNome, descreverErroCamera } from '../utils.js';
+import { escapeHtml, primeiroNome, hojeISO, descreverErroCamera } from '../utils.js';
 import { carregarModelos, detectarRosto } from '../faceRecognition.js';
 
 let idFuncionarioSelecionado = null; // seleção manual no mural (fallback)
 let ultimoPontoBatido = null;
+let registrandoPonto = false;        // trava anti duplo-toque
+let timerFecharSucesso = null;
 
 let streamCamera = null;
 let intervaloReconhecimento = null;
@@ -17,7 +19,9 @@ const FRAMES_PARA_CONFIRMAR = 2;
 let candidatoAtual = null;
 let candidatoContagem = 0;
 
-/* ===================== Mural manual (fallback, sem câmera) ===================== */
+const ORDEM_PONTOS = ['Entrada', 'Saída Almoço', 'Retorno Almoço', 'Saída Final'];
+
+/* ===================== Seleção manual + status do funcionário ===================== */
 
 export async function carregarMuralFuncionarios() {
     const funcionarios = await api.listarFuncionarios();
@@ -33,19 +37,86 @@ export async function carregarMuralFuncionarios() {
         const card = document.createElement('div');
         card.className = 'cartao-colaborador';
         card.id = `card-f-${f.id}`;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
         card.innerHTML = `
-            <span class="emoji-v">${escapeHtml(f.emoji)}</span>
+            <span class="emoji-v" aria-hidden="true">${escapeHtml(f.emoji)}</span>
             <span class="nome-v">${escapeHtml(primeiroNome(f.nome))}</span>
         `;
-        card.addEventListener('click', () => {
-            idFuncionarioSelecionado = f.id;
-            document.querySelectorAll('.cartao-colaborador').forEach((c) => c.classList.remove('selecionado'));
-            card.classList.add('selecionado');
-        });
+        const selecionar = () => selecionarFuncionario(f, card);
+        card.addEventListener('click', selecionar);
+        card.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selecionar(); } });
         mural.appendChild(card);
     });
 
     return funcionarios;
+}
+
+async function selecionarFuncionario(f, card) {
+    idFuncionarioSelecionado = f.id;
+    document.querySelectorAll('.cartao-colaborador').forEach((c) => c.classList.remove('selecionado'));
+    card.classList.add('selecionado');
+
+    // Banner com quem vai registrar
+    document.getElementById('banner-selecionado-emoji').textContent = f.emoji;
+    document.getElementById('banner-selecionado-nome').textContent = f.nome;
+    document.getElementById('banner-selecionado-status').textContent = 'Consultando situação de hoje...';
+    document.getElementById('banner-selecionado').classList.remove('escondido');
+    document.getElementById('dica-registro').classList.add('escondido');
+
+    // Libera os botões de registro
+    document.querySelectorAll('#totem-bater-ponto .btn-ponto').forEach((b) => { b.disabled = false; });
+
+    // Situação de hoje + sugestão do próximo registro (usa endpoint já existente)
+    try {
+        const dados = await api.meuHistorico(f.id);
+        const { statusTexto, proximoTipo } = analisarSituacaoDeHoje(dados.registros || []);
+        if (idFuncionarioSelecionado !== f.id) return; // trocou de pessoa nesse meio tempo
+        document.getElementById('banner-selecionado-status').textContent = statusTexto;
+        marcarSugestao(proximoTipo);
+    } catch (_) {
+        document.getElementById('banner-selecionado-status').textContent = 'Pronto para registrar';
+        marcarSugestao(null);
+    }
+}
+
+/** Interpreta os registros e devolve o status atual + o tipo de ponto esperado em seguida. */
+function analisarSituacaoDeHoje(registros) {
+    const hoje = hojeISO();
+    const hojeBR = hoje.split('-').reverse().join('/');
+    const deHoje = registros.filter((r) => r.data === hoje || r.data === hojeBR);
+
+    // O último registro de hoje define o estado (a lista pode vir em qualquer ordem)
+    let ultimo = null;
+    deHoje.forEach((r) => {
+        const idx = ORDEM_PONTOS.indexOf(r.tipo);
+        if (idx >= 0 && (!ultimo || idx > ORDEM_PONTOS.indexOf(ultimo.tipo))) ultimo = r;
+    });
+
+    if (!ultimo) return { statusTexto: 'Nenhum registro hoje', proximoTipo: 'Entrada' };
+
+    const hora = (ultimo.hora || '').substring(0, 5);
+    switch (ultimo.tipo) {
+        case 'Entrada': return { statusTexto: `Em expediente desde ${hora}`, proximoTipo: 'Saída Almoço' };
+        case 'Saída Almoço': return { statusTexto: `Em intervalo desde ${hora}`, proximoTipo: 'Retorno Almoço' };
+        case 'Retorno Almoço': return { statusTexto: `Em expediente — voltou do intervalo às ${hora}`, proximoTipo: 'Saída Final' };
+        case 'Saída Final': return { statusTexto: `Expediente encerrado às ${hora}`, proximoTipo: null };
+        default: return { statusTexto: 'Pronto para registrar', proximoTipo: null };
+    }
+}
+
+function marcarSugestao(tipo) {
+    document.querySelectorAll('#totem-bater-ponto .btn-ponto').forEach((b) => {
+        b.classList.toggle('sugerido', !!tipo && b.dataset.tipo === tipo);
+    });
+}
+
+function limparSelecao() {
+    idFuncionarioSelecionado = null;
+    document.querySelectorAll('.cartao-colaborador').forEach((c) => c.classList.remove('selecionado'));
+    document.getElementById('banner-selecionado').classList.add('escondido');
+    document.getElementById('dica-registro').classList.remove('escondido');
+    document.querySelectorAll('#totem-bater-ponto .btn-ponto').forEach((b) => { b.disabled = true; b.classList.remove('sugerido'); });
 }
 
 export function iniciarBusca() {
@@ -64,23 +135,34 @@ export function iniciarBotoesDePonto() {
     document.querySelectorAll('.btn-ponto').forEach((btn) => {
         btn.addEventListener('click', () => baterPontoManual(btn.dataset.tipo));
     });
+    document.getElementById('btn-trocar-funcionario')?.addEventListener('click', limparSelecao);
 }
 
 // O totem já é um dispositivo autenticado (token), presencial e fixo na empresa — não precisa
-// mais de um PIN pessoal extra pra marcação manual (isso só fazia sentido quando existia a
-// possibilidade de acesso remoto por celular pessoal, que não existe mais nesse desenho).
+// mais de um PIN pessoal extra pra marcação manual.
 async function baterPontoManual(tipo) {
     if (!idFuncionarioSelecionado) {
         toast('Selecione seu nome no mural antes de marcar o ponto.', 'erro');
         return;
     }
+    if (registrandoPonto) return; // já tem um registro em andamento
+
+    registrandoPonto = true;
+    const botoes = document.querySelectorAll('#totem-bater-ponto .btn-ponto');
+    botoes.forEach((b) => { b.disabled = true; });
 
     const registro = await baterPonto(tipo, idFuncionarioSelecionado);
-    if (!registro) return;
+    registrandoPonto = false;
+
+    if (!registro) {
+        botoes.forEach((b) => { b.disabled = false; });
+        return;
+    }
 
     abrirModalConfirmacao(registro, tipo);
-    idFuncionarioSelecionado = null;
-    document.querySelectorAll('.cartao-colaborador').forEach((c) => c.classList.remove('selecionado'));
+    limparSelecao();
+    document.getElementById('busca-funcionario').value = '';
+    document.querySelectorAll('#mural-funcionarios .cartao-colaborador').forEach((c) => { c.style.display = ''; });
 }
 
 async function baterPonto(tipo, funcionarioId) {
@@ -98,10 +180,31 @@ async function baterPonto(tipo, funcionarioId) {
     }
 }
 
+/** Confirmação de sucesso — fecha sozinha depois de alguns segundos (totem compartilhado). */
 function abrirModalConfirmacao(registro, tipo) {
     document.getElementById('modal-texto').innerHTML =
-        `<b>${escapeHtml(registro.nome)}</b><br>${escapeHtml(tipo)} registrado às ${escapeHtml(registro.hora)} (${escapeHtml(registro.data)})`;
+        `<b>${escapeHtml(registro.nome)}</b><br>${escapeHtml(tipo)} registrado às <b>${escapeHtml(registro.hora)}</b> (${escapeHtml(registro.data)})`;
     document.getElementById('modalPonto').style.display = 'flex';
+
+    const contagem = document.getElementById('sucesso-contagem');
+    let restante = 5;
+    contagem.textContent = `Fechando em ${restante}s...`;
+
+    clearInterval(timerFecharSucesso);
+    timerFecharSucesso = setInterval(() => {
+        restante -= 1;
+        if (restante <= 0) {
+            fecharModalSucesso();
+        } else {
+            contagem.textContent = `Fechando em ${restante}s...`;
+        }
+    }, 1000);
+}
+
+export function fecharModalSucesso() {
+    clearInterval(timerFecharSucesso);
+    timerFecharSucesso = null;
+    document.getElementById('modalPonto').style.display = 'none';
 }
 
 export function getUltimoPontoBatido() {
@@ -122,8 +225,15 @@ export function iniciarReconhecimentoFacial() {
     });
 }
 
-/** No totem, a câmera é a forma principal de identificação — abre sozinha ao entrar na tela. */
-export function autoAbrirCamera() {
+/**
+ * No totem, a câmera é a forma principal de identificação — mas o modal só abre sozinho
+ * se o reconhecimento facial estiver realmente instalado. Sem os modelos, abrir um modal
+ * só pra pessoa ler um aviso e fechar era uma etapa inútil a cada registro.
+ */
+export async function autoAbrirCamera() {
+    if (estadoModal !== 'fechado') return;
+    const modelosOk = await carregarModelos();
+    if (!modelosOk) return; // fica direto na seleção manual, sem modal no caminho
     if (estadoModal === 'fechado') abrirModalCamera();
 }
 
@@ -266,7 +376,7 @@ async function registrarPontoNoModal(tipo) {
     }, 2000);
 }
 
-/** Libera a câmera — chamado ao fechar o popup, ou sempre que a pessoa sai da aba "Bater Ponto". */
+/** Libera a câmera — chamado ao fechar o popup, ou sempre que a pessoa sai da aba "Registrar ponto". */
 export function pararReconhecimentoFacial() {
     clearInterval(intervaloReconhecimento);
     intervaloReconhecimento = null;

@@ -1,0 +1,13 @@
+Logo da Marine Shop
+===================
+
+Salve a logo oficial NESTA pasta com o nome exato:
+
+    logo-marine-shop.png
+
+Pronto — ela aparece automaticamente no login, no totem e no painel
+administrativo. Qualquer proporção funciona (a imagem é encaixada com
+object-fit: contain, sem distorcer nem quebrar o layout).
+
+Para trocar o nome do arquivo, o nome do sistema ou o monograma do
+placeholder, edite um único lugar: public/js/brand.js

@@ -3,6 +3,7 @@ import { toast } from '../toast.js';
 import { escapeHtml, descreverErroCamera } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
 import { carregarModelos, capturarDescritor } from '../faceRecognition.js';
+import { confirmar } from '../confirmar.js';
 
 let streamAtivo = null;
 
@@ -115,7 +116,12 @@ export async function renderizarAbaBiometria() {
     container.querySelectorAll('.btn-remover-biometria').forEach((btn) => {
         btn.addEventListener('click', async (ev) => {
             const id = ev.target.closest('.config-row-funcionario').dataset.id;
-            if (!confirm('Remover todas as amostras faciais desse funcionário? Ele vai parar de ser reconhecido pela câmera até cadastrar de novo.')) return;
+            const ok = await confirmar(
+                'Remover amostras faciais?',
+                'Ele vai parar de ser reconhecido pela câmera até cadastrar de novo.',
+                { textoConfirmar: 'Remover', perigo: true }
+            );
+            if (!ok) return;
             try {
                 await comAutorizacao(() => api.removerBiometria(id));
                 toast('Amostras removidas.', 'sucesso');

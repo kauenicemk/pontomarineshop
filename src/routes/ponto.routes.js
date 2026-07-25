@@ -26,7 +26,7 @@ app.post('/ajuste-ponto', exigirAutorizacaoAdmin, async (c) => {
     const tipo = exigirTipoPonto(body.tipo);
     const justificativa = exigirTexto(body.justificativa, 'justificativa', { maxLen: 300 });
 
-    await pontoService.ajustarPontoManual({ funcionario_id, data, hora, tipo, justificativa });
+    await pontoService.ajustarPontoManual({ funcionario_id, data, hora, tipo, justificativa, admin: c.get('admin') });
     return c.json({ message: 'Ajuste manual gravado com sucesso!' });
 });
 

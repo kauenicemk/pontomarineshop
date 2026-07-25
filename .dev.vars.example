@@ -1,4 +1,15 @@
 # Copie este arquivo para ".dev.vars" (mesma pasta do wrangler.toml) para testar localmente
-# com `wrangler pages dev`. Em produção, esses valores vão via `wrangler pages secret put`,
-# nunca em arquivo versionado.
-npx wrangler deploy
+# com `wrangler dev`. O .dev.vars está no .gitignore e nunca deve ser versionado.
+#
+# Em produção, esses valores vão via `wrangler secret put <NOME>`, nunca em arquivo versionado.
+
+# Segredo usado para assinar os tokens JWT (admin e totem). Use um valor longo e aleatório.
+JWT_SECRET=troque-por-um-valor-longo-e-aleatorio
+
+# Conta de administrador criada automaticamente no PRIMEIRO uso (se não existir nenhum admin).
+ADMIN_NOME_INICIAL=Administrador
+ADMIN_EMAIL_INICIAL=admin@marineshop.com.br
+ADMIN_SENHA_INICIAL=troque-esta-senha
+
+# Senha inicial do totem (4 a 8 dígitos) — troque pela tela de Administração após o primeiro acesso.
+TOTEM_SENHA_INICIAL=000000

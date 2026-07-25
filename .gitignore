@@ -1,0 +1,20 @@
+# Dependências
+node_modules/
+
+# Segredos e configuração local — NUNCA versionar
+.env
+.dev.vars
+
+# Banco local e artefatos do Wrangler
+data/
+.wrangler/
+
+# Certificados HTTPS locais
+ssl/
+
+# Arquivos de teste/rascunho
+teste-worker.js
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

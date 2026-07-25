@@ -2,6 +2,7 @@ import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, mesAtualISO } from '../utils.js';
 import { BRAND } from '../brand.js';
+import { getTotemToken } from '../auth.js';
 
 let funcionarioAtualId = null;
 let mesAtualRef = null;
@@ -98,8 +99,10 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
         <div class="espelho-confirmacao">
             ${confirmacao.confirmado
                 ? `<p class="espelho-confirmado">✅ Confirmado por este colaborador em ${new Date(confirmacao.confirmado_em.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</p>`
-                : `<button class="action-btn" id="btn-confirmar-espelho" style="width:auto; padding:8px 16px;">✅ Confirmo que revisei este espelho</button>
-                   <p style="color:var(--text-muted); font-size:11.5px; margin-top:6px;">Essa confirmação deve ser feita pelo próprio colaborador.</p>`
+                : (getTotemToken()
+                    ? `<button class="action-btn" id="btn-confirmar-espelho" style="width:auto; padding:8px 16px;">✅ Confirmo que revisei este espelho</button>
+                       <p style="color:var(--text-muted); font-size:11.5px; margin-top:6px;">Essa confirmação deve ser feita pelo próprio colaborador.</p>`
+                    : `<p style="color:var(--text-muted); font-size:11.5px;">Ainda não confirmado pelo colaborador — a confirmação é feita por ele, no totem da empresa.</p>`)
             }
         </div>
 

@@ -33,6 +33,7 @@ export function montarLogos() {
         slot.innerHTML = `
             <span class="marca-logo-simbolo">
                 <img src="${BRAND.logoUrl}" alt="Logo ${BRAND.empresa}"
+                     onload="this.closest('.marca-logo-simbolo').classList.add('com-imagem')"
                      onerror="this.closest('.marca-logo-simbolo').classList.add('sem-imagem')">
                 <span class="marca-monograma" aria-hidden="true">${BRAND.monograma}</span>
             </span>

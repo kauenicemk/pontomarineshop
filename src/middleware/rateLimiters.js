@@ -3,10 +3,20 @@
 // janela/máximo são os MESMOS da versão anterior.
 function criarLimitador({ janelaMs, maximo, mensagem }) {
     const acessos = new Map(); // ip -> [timestamps]
+    let ultimaLimpeza = Date.now();
 
     return async function limitador(c, next) {
         const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'desconhecido';
         const agora = Date.now();
+
+        // Limpeza periódica: remove IPs sem acesso recente para o Map não crescer sem limite.
+        if (agora - ultimaLimpeza > janelaMs) {
+            ultimaLimpeza = agora;
+            for (const [chave, tempos] of acessos) {
+                if (!tempos.some((t) => agora - t < janelaMs)) acessos.delete(chave);
+            }
+        }
+
         const registros = (acessos.get(ip) || []).filter((t) => agora - t < janelaMs);
 
         if (registros.length >= maximo) {

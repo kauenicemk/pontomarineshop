@@ -43,7 +43,14 @@ app.post('/admin/criar', exigirAutorizacaoAdmin, async (c) => {
     const body = await c.req.json();
     const nome = exigirTexto(body.nome, 'nome', { maxLen: 150 });
     const email = exigirTexto(body.email, 'email', { maxLen: 150 });
-    const senha = exigirTexto(body.senha, 'senha', { maxLen: 100 });
+    const senha = exigirTexto(body.senha, 'senha', { minLen: 8, maxLen: 100 });
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return c.json({ message: 'Informe um e-mail válido.' }, 400);
+    }
+    if (senha.length < 8) {
+        return c.json({ message: 'A senha deve ter pelo menos 8 caracteres.' }, 400);
+    }
 
     const novo = await authService.criarAdmin({ nome, email, senha });
     return c.json(novo, 201);

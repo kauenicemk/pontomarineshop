@@ -1,8 +1,11 @@
 const db = require('../db/db');
 const { registrarAuditoria } = require('../utils/auditoria');
+const { agoraBrasilia } = require('../utils/tempo');
 
+// Sempre a data de BRASÍLIA — usar UTC aqui fazia o status das férias (e o card
+// "de férias hoje" do dashboard) virar de dia 3 horas mais cedo, às 21h locais.
 function hojeISO() {
-    return new Date().toISOString().slice(0, 10);
+    return agoraBrasilia().data;
 }
 
 function somarDias(dataISO, dias) {
@@ -64,6 +67,28 @@ async function criar({ funcionario_id, data_inicio, data_fim, observacao }) {
     if (data_fim < data_inicio) {
         const erro = new Error('A data de término não pode ser antes da data de início.');
         erro.status = 400;
+        throw erro;
+    }
+
+    const funcionario = await db.get(`SELECT id, ativo FROM funcionarios WHERE id = ?`, [funcionario_id]);
+    if (!funcionario) {
+        const erro = new Error('Funcionário não encontrado.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    // Bloqueia sobreposição: além de não fazer sentido, remover um dos períodos
+    // sobrepostos apagaria as ausências do outro, corrompendo o histórico.
+    const sobreposto = await db.get(
+        `SELECT id, data_inicio, data_fim FROM ferias
+         WHERE funcionario_id = ? AND data_inicio <= ? AND data_fim >= ?`,
+        [funcionario_id, data_fim, data_inicio]
+    );
+    if (sobreposto) {
+        const erro = new Error(
+            `Esse funcionário já tem férias registradas de ${sobreposto.data_inicio.split('-').reverse().join('/')} a ${sobreposto.data_fim.split('-').reverse().join('/')} — os períodos não podem se sobrepor.`
+        );
+        erro.status = 409;
         throw erro;
     }
 

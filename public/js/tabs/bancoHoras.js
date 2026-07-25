@@ -16,8 +16,8 @@ let interatividadeIniciada = false;
 export function popularSeletorBanco(funcionarios) {
     const sel = document.getElementById('banco-colaborador');
     const valorAtual = sel.value;
-    sel.innerHTML = '<option value="__todos__">📊 Visão Geral (Todos)</option>' +
-        funcionarios.map((f) => `<option value="${escapeHtml(f.nome)}">${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</option>`).join('');
+    sel.innerHTML = '<option value="__todos__">Visão Geral (Todos)</option>' +
+        funcionarios.map((f) => `<option value="${f.id}">${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</option>`).join('');
     if (valorAtual) sel.value = valorAtual;
 
     const mesInput = document.getElementById('banco-mes');
@@ -270,7 +270,10 @@ export async function renderizarGraficoBanco() {
         desenharBarras(ctx, largura, altura, nomes.map((n) => n.split(' ')[0]), valores);
         legenda.textContent = 'Saldo acumulado no mês, por colaborador (verde = positivo, vermelho = negativo). Passe o mouse na visão individual para ver o valor exato de cada dia.';
     } else {
-        const registrosColab = dados.filter((d) => d.nome === colaboradorSelecionado).sort((a, b) => a.dataISO.localeCompare(b.dataISO));
+        // Filtra por ID (não por nome) — dois colaboradores homônimos não podem se misturar.
+        const idSelecionado = Number(colaboradorSelecionado);
+        const nomeSelecionado = document.getElementById('banco-colaborador').selectedOptions[0]?.textContent || '';
+        const registrosColab = dados.filter((d) => d.funcionarioId === idSelecionado).sort((a, b) => a.dataISO.localeCompare(b.dataISO));
         let acumulado = 0;
         const labels = []; const valores = []; const deltasDiarios = [];
         registrosColab.forEach((d) => {
@@ -285,6 +288,6 @@ export async function renderizarGraficoBanco() {
         const pontosXY = desenharLinha(ctx, largura, altura, labels, valores);
         ultimoDesenhoIndividual = { pontosXY, labels, valores };
         renderizarResumoIndividual(calcularResumoIndividual(valores, deltasDiarios));
-        legenda.textContent = `Saldo acumulado ao longo do mês — ${colaboradorSelecionado.split(' ')[0]}. Passe o mouse sobre o gráfico pra ver o valor de cada dia.`;
+        legenda.textContent = `Saldo acumulado ao longo do mês — ${nomeSelecionado}. Passe o mouse sobre o gráfico pra ver o valor de cada dia.`;
     }
 }

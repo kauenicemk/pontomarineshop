@@ -1,5 +1,5 @@
 const db = require('../db/db');
-const { grupoDoDia } = require('../utils/tempo');
+const { grupoDoDia, agoraBrasilia } = require('../utils/tempo');
 const { registrarAuditoria } = require('../utils/auditoria');
 const feriadosService = require('./feriados.service');
 const funcionariosService = require('./funcionarios.service');
@@ -41,6 +41,20 @@ function listarTodosOsDias(dataInicioISO, dataFimISO) {
  * Domingo nunca conta como falta. Feriados cadastrados também não contam.
  */
 async function calcularFaltas({ dataInicio, dataFim }) {
+    // Um dia só pode virar "falta" depois que ele TERMINA. Sem esse corte, pedir o mês
+    // corrente inteiro marcava como falta todos os dias futuros (e o próprio dia de hoje
+    // antes do fim do expediente). O cálculo considera no máximo até ONTEM (Brasília).
+    const ontem = (() => {
+        const hoje = agoraBrasilia().data;
+        const d = new Date(`${hoje}T12:00:00Z`);
+        d.setUTCDate(d.getUTCDate() - 1);
+        return d.toISOString().slice(0, 10);
+    })();
+    if (dataFim > ontem) dataFim = ontem;
+    if (dataInicio > dataFim) {
+        return { faltas: [], ausenciasJustificadas: [], totalDiasUteisNoPeriodo: 0 };
+    }
+
     const [funcionarios, feriadosSet, justificadas, entradasRegistradas, jornadasPorFuncionario] = await Promise.all([
         db.all(`SELECT id, emoji, nome, regime FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`),
         feriadosService.buscarComoConjunto({ dataInicio, dataFim }),

@@ -19,10 +19,11 @@ const app = new Hono();
 
 app.use(secureHeaders({ contentSecurityPolicy: false }));
 
-// Login (totem e admin) são os novos alvos de força bruta, agora que o sistema é público.
+// Login (totem e admin) são os alvos de força bruta, agora que o sistema é público.
+// (/api/ajuste-ponto saiu daqui: já exige token de admin, e o limite de 15/15min
+//  impedia o RH de corrigir vários pontos em sequência.)
 app.use('/api/auth/totem/login', limiteAutenticacao);
 app.use('/api/auth/admin/login', limiteAutenticacao);
-app.use('/api/ajuste-ponto', limiteAutenticacao);
 app.use('/api/*', limiteGeral);
 
 // Servir arquivos estáticos (public/) e o roteamento de "/" ficam a cargo do Cloudflare

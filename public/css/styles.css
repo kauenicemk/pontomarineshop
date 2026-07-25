@@ -85,6 +85,14 @@ button { font-family: inherit; }
 }
 .marca-logo-simbolo.sem-imagem img { display: none; }
 .marca-logo-simbolo.sem-imagem .marca-monograma { display: block; }
+
+/* Logo oficial carregada: chip claro (o cinza da logo some sobre fundo escuro)
+   e largura livre pra respeitar a proporção horizontal da marca. */
+.marca-logo-simbolo.com-imagem {
+    width: auto; max-width: 130px; background: #fff; padding: 4px 8px;
+}
+.marca-logo-simbolo.com-imagem img { width: auto; max-width: 100%; }
+.marca-logo-grande .marca-logo-simbolo.com-imagem { max-width: 220px; padding: 8px 14px; }
 .marca-logo-nome { font-family: var(--fonte-display); font-weight: 800; font-size: 15.5px; line-height: 1.2; }
 
 .marca-logo-grande { flex-direction: column; gap: 12px; margin-bottom: 14px; }

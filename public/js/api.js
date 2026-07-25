@@ -26,11 +26,17 @@ async function chamar(caminho, { method = 'GET', body, admin = false, totem = fa
         if (token) headers['x-totem-token'] = token;
     }
 
-    const res = await fetch(caminho, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined
-    });
+    let res;
+    try {
+        res = await fetch(caminho, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined
+        });
+    } catch (_) {
+        // Falha de rede (sem internet, servidor fora) — mensagem clara em vez de "Failed to fetch".
+        throw new ApiError('Sem conexão com o servidor. Verifique a internet e tente novamente.', 0);
+    }
 
     let data = null;
     try { data = await res.json(); } catch (_) { /* resposta sem corpo JSON */ }
@@ -105,8 +111,9 @@ export const api = {
     registrarFerias: (dados) => chamar('/api/ferias', { method: 'POST', body: dados, admin: true }),
     removerFerias: (id) => chamar(`/api/ferias/${id}`, { method: 'DELETE', admin: true }),
 
-    // Espelho de ponto
-    buscarConfirmacaoEspelho: (funcionarioId, mes) => chamar(`/api/espelho/confirmacao/${funcionarioId}?mes=${mes}`, { totem: true }),
+    // Espelho de ponto — a consulta manda os dois tokens (o que existir no contexto):
+    // no totem vai o do dispositivo; no painel administrativo vai o Bearer do admin.
+    buscarConfirmacaoEspelho: (funcionarioId, mes) => chamar(`/api/espelho/confirmacao/${funcionarioId}?mes=${mes}`, { totem: true, admin: true }),
     confirmarEspelho: (funcionario_id, mes_referencia) => chamar('/api/espelho/confirmar', { method: 'POST', body: { funcionario_id, mes_referencia }, totem: true }),
 
     // People Analytics

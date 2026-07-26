@@ -3,7 +3,7 @@ import { toast } from '../toast.js';
 import { escapeHtml, paraMinutos, minutosParaHoras } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
-import { turnoDoFuncionario, ROTULOS_TURNO, TURNOS } from '../turno.js';
+import { turnoDoFuncionario, ROTULOS_TURNO, HORA_CORTE_TURNO } from '../turno.js';
 
 const ROTULOS_REGIME = { CLT: 'CLT', ESTAGIARIO: 'Estagiário', PJ: 'PJ' };
 const GRUPOS = [
@@ -74,11 +74,6 @@ export async function renderizarAbaConfig() {
                         ${Object.keys(ROTULOS_REGIME).map((r) => `<option value="${r}" ${r === f.regime ? 'selected' : ''}>${ROTULOS_REGIME[r]}</option>`).join('')}
                     </select>
                 </label>
-                <label>Turno
-                    <select class="input-turno">
-                        ${TURNOS.map((t) => `<option value="${t}" ${t === turnoDoFuncionario(f) ? 'selected' : ''}>${ROTULOS_TURNO[t]}</option>`).join('')}
-                    </select>
-                </label>
                 <label>Tolerância almoço (min)
                     <input type="number" min="0" max="240" class="input-tolerancia" value="${f.tolerancia_almoco_min}" style="width:70px">
                 </label>
@@ -104,7 +99,12 @@ export async function renderizarAbaConfig() {
             </div>
 
             <div class="jornada-grupos">
-                <button type="button" class="btn-copiar-jornada">📋 Copiar Segunda-feira para Terça–Sexta</button>
+                <p class="nota-rodape" style="margin:0 0 8px;">
+                    O turno é definido sozinho pelo horário de entrada: antes das
+                    ${HORA_CORTE_TURNO}:00 é <b>${ROTULOS_TURNO.manha_tarde}</b>, a partir das
+                    ${HORA_CORTE_TURNO}:00 é <b>${ROTULOS_TURNO.tarde_noite}</b>.
+                </p>
+                <button type="button" class="btn-copiar-jornada">Copiar Segunda-feira para Terça–Sexta</button>
                 ${GRUPOS.map((g) => linhaGrupo(g, f.jornada[g.chave])).join('')}
             </div>
 
@@ -212,7 +212,6 @@ function lerJornadaDaLinha(linha) {
 async function salvarLinha(linha) {
     const id = linha.dataset.id;
     const regime = linha.querySelector('.input-regime').value;
-    const turno = linha.querySelector('.input-turno').value;
     const tolerancia_almoco_min = parseInt(linha.querySelector('.input-tolerancia').value, 10) || 0;
     const almoco_flexivel = linha.querySelector('.input-flexivel').checked;
     const jornada = lerJornadaDaLinha(linha);
@@ -225,7 +224,6 @@ async function salvarLinha(linha) {
     try {
         await comAutorizacao(async () => {
             await api.atualizarRegime(id, regime);
-            await api.atualizarTurno(id, turno);
             await api.atualizarRegrasAlmoco(id, { tolerancia_almoco_min, almoco_flexivel });
             await api.salvarJornada(id, jornada);
             await api.atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo, departamento });

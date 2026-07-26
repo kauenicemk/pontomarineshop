@@ -65,7 +65,6 @@ export const api = {
     atualizarRegrasAlmoco: (id, dados) => chamar(`/api/funcionarios/${id}/regras-almoco`, { method: 'POST', body: dados, admin: true }),
     atualizarAtivo: (id, ativo) => chamar(`/api/funcionarios/${id}/ativo`, { method: 'POST', body: { ativo }, admin: true }),
     atualizarRegime: (id, regime) => chamar(`/api/funcionarios/${id}/regime`, { method: 'POST', body: { regime }, admin: true }),
-    atualizarTurno: (id, turno) => chamar(`/api/funcionarios/${id}/turno`, { method: 'POST', body: { turno }, admin: true }),
     removerFuncionario: (id) => chamar(`/api/funcionarios/${id}`, { method: 'DELETE', admin: true }),
     salvarJornada: (id, jornada) => chamar(`/api/funcionarios/${id}/jornada`, { method: 'POST', body: jornada, admin: true }),
     cadastrarBiometria: (id, descritor) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'POST', body: { descritor }, admin: true }),

@@ -6,7 +6,7 @@ const biometriaService = require('../services/biometria.service');
 const { exigirAutorizacaoAdmin } = require('../middleware/adminAuth');
 const { exigirTotem } = require('../middleware/totemAuth');
 const {
-    exigirInteiro, exigirTexto, exigirTextoOpcional, exigirRegime, exigirTurno, exigirPin, exigirHora,
+    exigirInteiro, exigirTexto, exigirTextoOpcional, exigirRegime, exigirPin, exigirHora,
     exigirDescritorFacial, exigirDataOpcional, exigirValorMonetarioOpcional
 } = require('../utils/validacao');
 
@@ -26,7 +26,6 @@ app.post('/', exigirAutorizacaoAdmin, async (c) => {
     const nome = exigirTexto(body.nome, 'nome', { maxLen: 150 });
     const emoji = exigirTexto(body.emoji, 'emoji', { maxLen: 10 });
     const regime = exigirRegime(body.regime);
-    const turno = body.turno ? exigirTurno(body.turno) : 'manha_tarde';
     const horas_diarias = exigirTexto(body.horas_diarias, 'horas_diarias', { maxLen: 20 });
     const pin = exigirPin(body.pin);
     const tolerancia_almoco_min = body.tolerancia_almoco_min != null ? exigirInteiro(body.tolerancia_almoco_min, 'tolerancia_almoco_min') : undefined;
@@ -39,7 +38,7 @@ app.post('/', exigirAutorizacaoAdmin, async (c) => {
     // A jornada (6 dias da semana) já sai com valores padrão sensatos pro regime escolhido
     // e pode ser ajustada depois na aba Configurar Horários.
     const novo = await funcionariosService.criar({
-        emoji, nome, regime, turno, horas_diarias, pin, tolerancia_almoco_min, almoco_flexivel,
+        emoji, nome, regime, horas_diarias, pin, tolerancia_almoco_min, almoco_flexivel,
         data_admissao, salario_base, cargo, departamento
     });
     return c.json(novo, 201);
@@ -98,15 +97,6 @@ app.post('/:id/ativo', exigirAutorizacaoAdmin, async (c) => {
     const body = await c.req.json();
     await funcionariosService.atualizarAtivo(id, !!body.ativo);
     return c.json({ message: body.ativo ? 'Funcionário readmitido com sucesso!' : 'Status atualizado com sucesso!' });
-});
-
-// Troca de turno (Manhã/Tarde <-> Tarde/Noite).
-app.post('/:id/turno', exigirAutorizacaoAdmin, async (c) => {
-    const id = exigirInteiro(c.req.param('id'), 'id');
-    const body = await c.req.json();
-    const turno = exigirTurno(body.turno);
-    await funcionariosService.atualizarTurno(id, turno);
-    return c.json({ message: 'Turno atualizado com sucesso!' });
 });
 
 // Troca de regime — usado, por exemplo, para efetivar um estagiário (ESTAGIARIO -> CLT).

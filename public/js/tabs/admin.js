@@ -82,7 +82,6 @@ export async function cadastrarFuncionario() {
     const nome = document.getElementById('novo-func-nome').value.trim();
     const emoji = document.getElementById('novo-func-emoji').value.trim();
     const regime = document.getElementById('novo-func-regime').value;
-    const turno = document.getElementById('novo-func-turno').value;
     const horas_diarias = document.getElementById('novo-func-horas').value.trim();
     const pin = document.getElementById('novo-func-pin').value.trim();
     const data_admissao = document.getElementById('novo-func-admissao').value || null;
@@ -96,7 +95,7 @@ export async function cadastrarFuncionario() {
     }
 
     try {
-        await comAutorizacao(() => api.criarFuncionario({ nome, emoji, regime, turno, horas_diarias, pin, data_admissao, salario_base, cargo, departamento }));
+        await comAutorizacao(() => api.criarFuncionario({ nome, emoji, regime, horas_diarias, pin, data_admissao, salario_base, cargo, departamento }));
         toast('Funcionário cadastrado com sucesso!', 'sucesso');
         ['novo-func-nome', 'novo-func-emoji', 'novo-func-horas', 'novo-func-pin', 'novo-func-admissao', 'novo-func-salario', 'novo-func-cargo', 'novo-func-departamento']
             .forEach((id) => { document.getElementById(id).value = ''; });

@@ -1,34 +1,44 @@
 /**
- * Turno (manhã / tarde / noite) — DERIVADO do horário de entrada que já existe na
- * jornada de cada funcionário. Foi resolvido assim de propósito: não exige coluna
- * nova no banco, não exige recadastrar ninguém e nunca fica dessincronizado do
- * horário real. Se um dia a empresa precisar de turnos que NÃO seguem o horário de
- * entrada (ex.: escalas 12x36 com nomes próprios), aí sim vale um campo dedicado.
+ * Turnos da operação. É um CAMPO do cadastro (coluna `turno` em funcionarios),
+ * editável em Configurar Horários — muda quando a pessoa troca de turno, sem
+ * depender do horário de entrada.
  *
- * Faixas: entrada antes das 12h = manhã | 12h–17h59 = tarde | 18h em diante = noite.
+ * O horário de entrada só é usado como PALPITE inicial (corte às 11:00) para
+ * cadastros antigos que ainda não tenham o campo preenchido.
  */
+export const TURNOS = ['manha_tarde', 'tarde_noite'];
+
+export const ROTULOS_TURNO = {
+    manha_tarde: 'Manhã/Tarde',
+    tarde_noite: 'Tarde/Noite'
+};
+
+/** Corte às 11:00: entra antes = Manhã/Tarde; às 11:00 ou depois = Tarde/Noite. */
+export const HORA_CORTE_TURNO = 11;
+
 const ORDEM_DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
 
-export const ROTULOS_TURNO = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' };
-
-/** Recebe a jornada ({segunda: {...}, ...}) e devolve 'manha' | 'tarde' | 'noite' | null. */
-export function turnoDaJornada(jornada) {
-    if (!jornada) return null;
+/** Palpite a partir da jornada — usado só quando o funcionário ainda não tem turno salvo. */
+export function turnoSugeridoPelaJornada(jornada) {
+    if (!jornada) return 'manha_tarde';
     const primeiroDiaUtil = ORDEM_DIAS.find((d) => jornada[d] && jornada[d].trabalha);
-    if (!primeiroDiaUtil) return null;
+    if (!primeiroDiaUtil) return 'manha_tarde';
 
-    const entrada = jornada[primeiroDiaUtil].horario_entrada || '';
-    const hora = Number(entrada.split(':')[0]);
-    if (!Number.isFinite(hora)) return null;
-
-    if (hora < 12) return 'manha';
-    if (hora < 18) return 'tarde';
-    return 'noite';
+    const hora = Number((jornada[primeiroDiaUtil].horario_entrada || '').split(':')[0]);
+    if (!Number.isFinite(hora)) return 'manha_tarde';
+    return hora >= HORA_CORTE_TURNO ? 'tarde_noite' : 'manha_tarde';
 }
 
-/** Monta { [funcionarioId]: 'manha'|'tarde'|'noite'|null } a partir da lista completa de funcionários. */
+/** Turno efetivo de um funcionário: o campo salvo; se não houver, o palpite da jornada. */
+export function turnoDoFuncionario(funcionario) {
+    if (!funcionario) return null;
+    if (TURNOS.includes(funcionario.turno)) return funcionario.turno;
+    return turnoSugeridoPelaJornada(funcionario.jornada);
+}
+
+/** Monta { [funcionarioId]: turno } a partir da lista completa de funcionários. */
 export function mapaDeTurnos(funcionarios) {
     const mapa = {};
-    (funcionarios || []).forEach((f) => { mapa[f.id] = turnoDaJornada(f.jornada); });
+    (funcionarios || []).forEach((f) => { mapa[f.id] = turnoDoFuncionario(f); });
     return mapa;
 }

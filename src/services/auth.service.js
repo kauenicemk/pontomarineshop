@@ -32,6 +32,38 @@ async function listarAdmins() {
     return db.all(`SELECT id, nome, email, ativo, criado_em FROM admins ORDER BY nome ASC`);
 }
 
+/**
+ * Remove uma conta de administrador. Duas travas de segurança:
+ *  - ninguém apaga a própria conta (evita se trancar fora do sistema por engano);
+ *  - não é possível apagar o último administrador que restou.
+ * `idSolicitante` é o admin logado que está pedindo a exclusão.
+ */
+async function removerAdmin(id, idSolicitante) {
+    if (Number(id) === Number(idSolicitante)) {
+        const erro = new Error('Você não pode apagar a sua própria conta. Peça a outro administrador.');
+        erro.status = 400;
+        throw erro;
+    }
+
+    const alvo = await db.get(`SELECT id, nome, email FROM admins WHERE id = ?`, [id]);
+    if (!alvo) {
+        const erro = new Error('Conta de administrador não encontrada.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    const { total } = await db.get(`SELECT COUNT(*) as total FROM admins`);
+    if (total <= 1) {
+        const erro = new Error('Esta é a única conta de administrador do sistema e não pode ser apagada.');
+        erro.status = 400;
+        throw erro;
+    }
+
+    await db.run(`DELETE FROM admins WHERE id = ?`, [id]);
+    await registrarAuditoria('remover_admin', 'admin', id, { nome: alvo.nome, email: alvo.email });
+    return alvo;
+}
+
 async function existeAlgumAdmin() {
     const row = await db.get(`SELECT COUNT(*) as total FROM admins`);
     return row.total > 0;
@@ -59,6 +91,7 @@ module.exports = {
     criarAdmin,
     verificarLoginAdmin,
     listarAdmins,
+    removerAdmin,
     existeAlgumAdmin,
     verificarSenhaTotem,
     definirSenhaTotem

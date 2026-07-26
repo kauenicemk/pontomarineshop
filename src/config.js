@@ -17,7 +17,14 @@ module.exports = {
         metaMinutosCLT: 480,        // 8h
         metaMinutosEstagiario: 360, // 6h
         metaMinutosSextaPadrao: 360,// sexta-feira reduzida por padrao (ajustavel por pessoa depois)
-        toleranciaAtrasoEntradaMin: 0 // minutos de carencia antes de contar atraso de entrada
+        toleranciaAtrasoEntradaMin: 0, // minutos de carencia antes de CONTAR atraso de entrada
+
+        // Regra da empresa: atraso de ate 10 minutos APARECE como atraso (para o gestor
+        // acompanhar quem chega tarde com frequencia), mas NAO desconta do saldo do dia.
+        // Passou de 10 minutos, o atraso inteiro desconta do saldo -- nao so o excedente.
+        // Ex.: 8 min de atraso -> conta 8 min de atraso, saldo intacto.
+        //      12 min de atraso -> conta 12 min de atraso e desconta os 12 do saldo.
+        minutosAtrasoSemDescontoNoSaldo: 10
     },
 
     // Percentuais padrao de hora extra e adicional noturno (tambem editaveis via tabela

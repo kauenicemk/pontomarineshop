@@ -2,6 +2,7 @@ import * as authMod from './auth.js';
 import { toast } from './toast.js';
 import { hojeISO, comBotaoOcupado } from './utils.js';
 import { montarLogos } from './brand.js';
+import { api } from './api.js';
 import { confirmar } from './confirmar.js';
 
 import * as baterPonto from './tabs/baterPonto.js';
@@ -19,6 +20,7 @@ import * as ferias from './tabs/ferias.js';
 import * as analytics from './tabs/analytics.js';
 import * as espelho from './tabs/espelho.js';
 import * as dashboard from './tabs/dashboard.js';
+import * as auditoria from './tabs/auditoria.js';
 
 const ehModoAdmin = window.location.pathname.startsWith('/admin');
 
@@ -137,8 +139,26 @@ async function iniciarModoTotem() {
 
 /* ===================== ADMIN ===================== */
 
+/**
+ * Carrega a lista de funcionários que alimenta TODOS os seletores do painel
+ * (ajuste manual, relatório individual, banco de horas, férias, faltas).
+ *
+ * Usa o endpoint ADMINISTRATIVO. Antes usava o mesmo carregamento do totem
+ * (/api/funcionarios), que exige o token do tablet — no painel esse token não
+ * existe, então a chamada respondia 401, o erro era engolido por um catch
+ * silencioso e todos os seletores ficavam VAZIOS. Era essa a causa de "não dá
+ * pra escolher o funcionário" no ajuste manual e no relatório individual.
+ */
 async function recarregarFuncionariosDoAdmin() {
-    const funcionarios = await baterPonto.carregarMuralFuncionarios().catch(() => []);
+    let funcionarios = [];
+    try {
+        const todos = await api.listarFuncionariosTodos();
+        funcionarios = todos.filter((f) => f.ativo); // seletores mostram só quem está ativo
+    } catch (e) {
+        console.error('Falha ao carregar funcionários do painel:', e);
+        toast(`Não foi possível carregar a lista de funcionários: ${e.message}`, 'erro');
+    }
+
     gestor.popularSeletorAjuste(funcionarios);
     bancoHoras.popularSeletorBanco(funcionarios);
     faltas.setFuncionarios(funcionarios);
@@ -169,6 +189,7 @@ function carregarConteudoAdminAba(nomeAba) {
     if (nomeAba === 'faltas') { faltas.iniciarAcoesEmLote(); faltas.carregarFaltas(); }
     if (nomeAba === 'admin-geral') { admin.carregarConfigHorasExtras(); admin.carregarListaAdmins(); admin.iniciarZonaDePerigo(); }
     if (nomeAba === 'biometria') biometria.renderizarAbaBiometria();
+    if (nomeAba === 'auditoria') { auditoria.iniciarAuditoria().then(() => auditoria.carregarAuditoria()); }
 }
 
 function mudarAdminAba(nomeAba, botao) {

@@ -3,6 +3,7 @@ import { toast } from '../toast.js';
 import { escapeHtml } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
+import { getAdminId } from '../auth.js';
 
 /**
  * Zona de perigo: apagar todos os funcionários e dados vinculados.
@@ -81,6 +82,7 @@ export async function cadastrarFuncionario() {
     const nome = document.getElementById('novo-func-nome').value.trim();
     const emoji = document.getElementById('novo-func-emoji').value.trim();
     const regime = document.getElementById('novo-func-regime').value;
+    const turno = document.getElementById('novo-func-turno').value;
     const horas_diarias = document.getElementById('novo-func-horas').value.trim();
     const pin = document.getElementById('novo-func-pin').value.trim();
     const data_admissao = document.getElementById('novo-func-admissao').value || null;
@@ -94,7 +96,7 @@ export async function cadastrarFuncionario() {
     }
 
     try {
-        await comAutorizacao(() => api.criarFuncionario({ nome, emoji, regime, horas_diarias, pin, data_admissao, salario_base, cargo, departamento }));
+        await comAutorizacao(() => api.criarFuncionario({ nome, emoji, regime, turno, horas_diarias, pin, data_admissao, salario_base, cargo, departamento }));
         toast('Funcionário cadastrado com sucesso!', 'sucesso');
         ['novo-func-nome', 'novo-func-emoji', 'novo-func-horas', 'novo-func-pin', 'novo-func-admissao', 'novo-func-salario', 'novo-func-cargo', 'novo-func-departamento']
             .forEach((id) => { document.getElementById(id).value = ''; });
@@ -142,14 +144,56 @@ export async function criarAdmin() {
 export async function carregarListaAdmins() {
     const container = document.getElementById('lista-admins');
     if (!container) return;
+
+    let admins;
     try {
-        const admins = await api.listarAdmins();
-        container.innerHTML = admins.length
-            ? `<div class="tabela-wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Desde</th></tr></thead><tbody>${
-                admins.map((a) => `<tr><td>${escapeHtml(a.nome)}</td><td>${escapeHtml(a.email)}</td><td>${escapeHtml((a.criado_em || '').split(' ')[0])}</td></tr>`).join('')
-              }</tbody></table></div>`
-            : '<p class="texto-vazio">Nenhum administrador cadastrado.</p>';
+        admins = await api.listarAdmins();
     } catch (e) {
-        container.innerHTML = `<p style="color:#ef4444">${escapeHtml(e.message)}</p>`;
+        container.innerHTML = `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
+        return;
     }
+
+    if (admins.length === 0) {
+        container.innerHTML = '<p class="texto-vazio">Nenhum administrador cadastrado.</p>';
+        return;
+    }
+
+    const meuId = getAdminId();
+    const unico = admins.length === 1;
+
+    container.innerHTML = `<div class="tabela-wrap"><table>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Desde</th><th></th></tr></thead>
+        <tbody>${admins.map((a) => {
+            const souEu = Number(a.id) === Number(meuId);
+            const motivo = souEu ? 'Você não pode apagar a própria conta'
+                : unico ? 'É a única conta de administrador do sistema' : '';
+            return `<tr>
+                <td>${escapeHtml(a.nome)}${souEu ? ' <span class="badge-turno">você</span>' : ''}</td>
+                <td>${escapeHtml(a.email)}</td>
+                <td>${escapeHtml((a.criado_em || '').split(' ')[0])}</td>
+                <td>${motivo
+                    ? `<span class="nota-rodape" style="margin:0" title="${escapeHtml(motivo)}">—</span>`
+                    : `<button class="action-btn btn-remover-admin" data-id="${a.id}" data-nome="${escapeHtml(a.nome)}" style="border-color:rgba(242,84,91,.4); color:var(--vermelho);">Excluir</button>`}
+                </td>
+            </tr>`;
+        }).join('')}</tbody>
+    </table></div>`;
+
+    container.querySelectorAll('.btn-remover-admin').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const ok = await confirmar(
+                `Excluir a conta de ${btn.dataset.nome}?`,
+                'Essa pessoa perde o acesso ao painel administrativo imediatamente. O histórico de ações dela no log de auditoria é mantido.',
+                { textoConfirmar: 'Excluir conta', perigo: true }
+            );
+            if (!ok) return;
+            try {
+                const resp = await api.removerAdmin(btn.dataset.id);
+                toast(resp.message, 'sucesso');
+                carregarListaAdmins();
+            } catch (e) {
+                toast(e.message, 'erro');
+            }
+        });
+    });
 }

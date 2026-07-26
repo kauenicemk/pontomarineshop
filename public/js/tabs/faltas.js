@@ -5,6 +5,7 @@ import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
 import { mapaDeTurnos, ROTULOS_TURNO } from '../turno.js';
 
+
 let funcionariosCache = [];
 let faltasCache = [];        // faltas do último cálculo (já filtradas por turno)
 let turnosPorFuncionario = {};
@@ -79,7 +80,7 @@ function renderizarFaltas(totalDiasUteis, turnoFiltro) {
 
     if (faltasCache.length === 0) {
         barra.classList.add('escondido');
-        const complemento = turnoFiltro ? ` no turno da ${ROTULOS_TURNO[turnoFiltro].toLowerCase()}` : '';
+        const complemento = turnoFiltro ? ` no turno ${ROTULOS_TURNO[turnoFiltro]}` : '';
         tbody.innerHTML = `<tr><td colspan="5" style="color:var(--verde)">Nenhuma falta não justificada${complemento} em ${totalDiasUteis} dia(s) útil(eis) analisado(s).</td></tr>`;
         return;
     }

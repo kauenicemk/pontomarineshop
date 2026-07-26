@@ -15,9 +15,22 @@ const feriasRoutes = require('./routes/ferias.routes');
 const espelhoRoutes = require('./routes/espelho.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 
+const { comContexto } = require('./utils/contextoRequisicao');
+
 const app = new Hono();
 
 app.use(secureHeaders({ contentSecurityPolicy: false }));
+
+// Abre um contexto por requisição. O objeto é preenchido pelo adminAuth quando a
+// rota exige login — é ele que leva "quem fez" até o log de auditoria.
+app.use('*', async (c, next) => {
+    const dados = {
+        admin: null,
+        ip: c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || null,
+        rota: `${c.req.method} ${new URL(c.req.url).pathname}`
+    };
+    return comContexto(dados, () => next());
+});
 
 // Login (totem e admin) são os alvos de força bruta, agora que o sistema é público.
 // (/api/ajuste-ponto saiu daqui: já exige token de admin, e o limite de 15/15min

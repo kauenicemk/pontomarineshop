@@ -1,4 +1,5 @@
 const { verificarToken } = require('../utils/jwtAuth');
+const { definirAdminDoContexto } = require('../utils/contextoRequisicao');
 
 /**
  * Antes, uma única senha de responsável compartilhada. Agora que o sistema fica acessível
@@ -26,7 +27,9 @@ async function exigirAutorizacaoAdmin(c, next) {
         return c.json({ message: 'Essa ação exige uma conta de administrador.' }, 403);
     }
 
-    c.set('admin', { id: payload.sub, nome: payload.nome });
+    const admin = { id: payload.sub, nome: payload.nome };
+    c.set('admin', admin);
+    definirAdminDoContexto(admin); // leva o autor até o log de auditoria
     await next();
 }
 

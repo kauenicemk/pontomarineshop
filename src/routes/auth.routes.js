@@ -4,7 +4,9 @@ const app = new Hono();
 const authService = require('../services/auth.service');
 const { gerarToken } = require('../utils/jwtAuth');
 const { exigirAutorizacaoAdmin } = require('../middleware/adminAuth');
-const { exigirTexto, exigirPin } = require('../utils/validacao');
+const { exigirTexto, exigirPin, exigirInteiro } = require('../utils/validacao');
+const { registrarAuditoria } = require('../utils/auditoria');
+const { definirAdminDoContexto } = require('../utils/contextoRequisicao');
 
 const SEGUNDOS_SESSAO_ADMIN = 12 * 60 * 60;      // 12h — sessão do painel administrativo
 const SEGUNDOS_SESSAO_TOTEM = 90 * 24 * 60 * 60; // 90 dias — o tablet fica "lembrado" como totem autorizado
@@ -17,7 +19,11 @@ app.post('/totem/login', async (c) => {
     const senha = exigirPin(body.senha, 'senha');
 
     const ok = await authService.verificarSenhaTotem(senha);
-    if (!ok) return c.json({ message: 'Senha do totem incorreta.' }, 401);
+    if (!ok) {
+        await registrarAuditoria('login_totem_falhou', 'totem', null, {});
+        return c.json({ message: 'Senha do totem incorreta.' }, 401);
+    }
+    await registrarAuditoria('login_totem', 'totem', null, {});
 
     const exp = Math.floor(Date.now() / 1000) + SEGUNDOS_SESSAO_TOTEM;
     const token = await gerarToken({ tipo: 'totem', exp }, c.env);
@@ -31,7 +37,14 @@ app.post('/admin/login', async (c) => {
     const senha = exigirTexto(body.senha, 'senha', { maxLen: 100 });
 
     const admin = await authService.verificarLoginAdmin(email, senha);
-    if (!admin) return c.json({ message: 'E-mail ou senha incorretos.' }, 401);
+    if (!admin) {
+        // Tentativa falha também vira registro: é o rastro de quem tentou entrar sem conseguir.
+        await registrarAuditoria('login_admin_falhou', 'admin', null, { email });
+        return c.json({ message: 'E-mail ou senha incorretos.' }, 401);
+    }
+
+    definirAdminDoContexto({ id: admin.id, nome: admin.nome });
+    await registrarAuditoria('login_admin', 'admin', admin.id, { email: admin.email });
 
     const exp = Math.floor(Date.now() / 1000) + SEGUNDOS_SESSAO_ADMIN;
     const token = await gerarToken({ tipo: 'admin', sub: String(admin.id), nome: admin.nome, exp }, c.env);
@@ -58,6 +71,14 @@ app.post('/admin/criar', exigirAutorizacaoAdmin, async (c) => {
 
 app.get('/admin/listar', exigirAutorizacaoAdmin, async (c) => {
     return c.json(await authService.listarAdmins());
+});
+
+// Excluir conta de administrador — não permite apagar a própria conta nem a última do sistema.
+app.delete('/admin/:id', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const solicitante = c.get('admin');
+    const removido = await authService.removerAdmin(id, solicitante && solicitante.id);
+    return c.json({ message: `Conta de ${removido.nome} removida do sistema.` });
 });
 
 // Trocar a senha do totem — ação administrativa (o tablet físico precisa ser reconfigurado

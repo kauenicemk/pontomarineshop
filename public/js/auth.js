@@ -38,6 +38,18 @@ export function getAdminNome() {
     return sessionStorage.getItem(CHAVE_ADMIN_NOME) || '';
 }
 
+/** Id do administrador logado (lido do próprio token) — usado para não deixar apagar a própria conta. */
+export function getAdminId() {
+    const token = getAdminToken();
+    if (!token) return null;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return payload.sub ? Number(payload.sub) : null;
+    } catch (_) {
+        return null;
+    }
+}
+
 export function limparAdminToken() {
     sessionStorage.removeItem(CHAVE_ADMIN);
     sessionStorage.removeItem(CHAVE_ADMIN_NOME);

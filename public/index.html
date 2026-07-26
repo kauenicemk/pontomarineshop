@@ -200,6 +200,10 @@
                 <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
                 Administração Geral
             </button>
+            <button data-admin-aba="auditoria">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                Log de Auditoria
+            </button>
         </nav>
         <div class="admin-rodape-sidebar">
             <div class="nome-admin" id="nome-admin-logado"></div>
@@ -390,9 +394,8 @@
                     <label>Turno
                         <select id="faltas-turno">
                             <option value="">Todos os turnos</option>
-                            <option value="manha">Manhã</option>
-                            <option value="tarde">Tarde</option>
-                            <option value="noite">Noite</option>
+                            <option value="manha_tarde">Manhã/Tarde</option>
+                            <option value="tarde_noite">Tarde/Noite</option>
                         </select>
                     </label>
                     <button class="btn btn-principal" id="btn-filtrar-faltas" style="margin:0;">Calcular Faltas</button>
@@ -472,9 +475,8 @@
                     <label>Turno
                         <select id="config-turno">
                             <option value="">Todos os turnos</option>
-                            <option value="manha">Manhã</option>
-                            <option value="tarde">Tarde</option>
-                            <option value="noite">Noite</option>
+                            <option value="manha_tarde">Manhã/Tarde</option>
+                            <option value="tarde_noite">Tarde/Noite</option>
                         </select>
                     </label>
                 </div>
@@ -508,6 +510,12 @@
                             <option value="CLT">CLT</option>
                             <option value="ESTAGIARIO">Estagiário</option>
                             <option value="PJ">PJ</option>
+                        </select>
+                    </label>
+                    <label>Turno
+                        <select id="novo-func-turno">
+                            <option value="manha_tarde">Manhã/Tarde</option>
+                            <option value="tarde_noite">Tarde/Noite</option>
                         </select>
                     </label>
                     <label>Carga horária <input type="text" class="campo" id="novo-func-horas" placeholder="Ex: 8h"></label>
@@ -564,6 +572,34 @@
                         <input type="text" class="campo" id="confirmar-zerar" placeholder="ZERAR" autocomplete="off" style="width:140px;">
                     </label>
                     <button class="btn btn-perigo-solido" id="btn-zerar-dados" style="margin:0;" disabled>Apagar todos os dados</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ---------- Log de Auditoria ---------- -->
+        <section id="admin-auditoria" class="admin-tela">
+            <h1 class="admin-secao-titulo">Log de Auditoria</h1>
+            <p class="admin-secao-subtitulo">Histórico de tudo que foi alterado no sistema — quem fez, quando e de onde.</p>
+            <div class="aviso-info">
+                Cada ação administrativa fica registrada com a conta que a executou. Tentativas de login
+                que falharam também aparecem aqui. Os registros não podem ser editados nem apagados pela interface.
+            </div>
+            <div class="card">
+                <div class="filtros">
+                    <label>De <input type="date" id="auditoria-inicio"></label>
+                    <label>Até <input type="date" id="auditoria-fim"></label>
+                    <label>Ação
+                        <select id="auditoria-acao"><option value="">Todas as ações</option></select>
+                    </label>
+                    <button class="btn btn-principal" id="btn-filtrar-auditoria" style="margin:0;">Filtrar</button>
+                    <button class="btn btn-secundario" id="btn-exportar-auditoria" style="margin:0;">Exportar CSV</button>
+                </div>
+                <p class="nota-rodape" id="auditoria-total" style="margin:0 0 10px;"></p>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Data / Hora</th><th>Quem</th><th>Ação</th><th>Alvo</th><th>Detalhes</th><th>IP</th></tr></thead>
+                        <tbody id="lista-auditoria"></tbody>
+                    </table>
                 </div>
             </div>
         </section>

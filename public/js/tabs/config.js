@@ -3,7 +3,7 @@ import { toast } from '../toast.js';
 import { escapeHtml, paraMinutos, minutosParaHoras } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
-import { turnoDaJornada, ROTULOS_TURNO } from '../turno.js';
+import { turnoDoFuncionario, ROTULOS_TURNO, TURNOS } from '../turno.js';
 
 const ROTULOS_REGIME = { CLT: 'CLT', ESTAGIARIO: 'Estagiário', PJ: 'PJ' };
 const GRUPOS = [
@@ -47,14 +47,14 @@ export async function renderizarAbaConfig() {
     }
 
     container.innerHTML = funcionarios.map((f) => `
-        <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}" data-turno="${turnoDaJornada(f.jornada) || ''}">
+        <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}" data-turno="${turnoDoFuncionario(f)}">
             <button type="button" class="config-gaveta-header" aria-expanded="false">
                 <span class="config-gaveta-titulo">
                     <b>${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</b>
                     ${f.ativo ? '' : ' <span class="badge-desligado">Desligado</span>'}
                 </span>
                 <span class="config-gaveta-meta">
-                    ${turnoDaJornada(f.jornada) ? `<span class="badge-turno">${escapeHtml(ROTULOS_TURNO[turnoDaJornada(f.jornada)])}</span>` : ''}
+                    <span class="badge-turno">${escapeHtml(ROTULOS_TURNO[turnoDoFuncionario(f)])}</span>
                     ${escapeHtml(ROTULOS_REGIME[f.regime] || f.regime)}
                     <svg class="icone-svg config-gaveta-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
@@ -72,6 +72,11 @@ export async function renderizarAbaConfig() {
                 <label>Regime
                     <select class="input-regime">
                         ${Object.keys(ROTULOS_REGIME).map((r) => `<option value="${r}" ${r === f.regime ? 'selected' : ''}>${ROTULOS_REGIME[r]}</option>`).join('')}
+                    </select>
+                </label>
+                <label>Turno
+                    <select class="input-turno">
+                        ${TURNOS.map((t) => `<option value="${t}" ${t === turnoDoFuncionario(f) ? 'selected' : ''}>${ROTULOS_TURNO[t]}</option>`).join('')}
                     </select>
                 </label>
                 <label>Tolerância almoço (min)
@@ -207,6 +212,7 @@ function lerJornadaDaLinha(linha) {
 async function salvarLinha(linha) {
     const id = linha.dataset.id;
     const regime = linha.querySelector('.input-regime').value;
+    const turno = linha.querySelector('.input-turno').value;
     const tolerancia_almoco_min = parseInt(linha.querySelector('.input-tolerancia').value, 10) || 0;
     const almoco_flexivel = linha.querySelector('.input-flexivel').checked;
     const jornada = lerJornadaDaLinha(linha);
@@ -219,6 +225,7 @@ async function salvarLinha(linha) {
     try {
         await comAutorizacao(async () => {
             await api.atualizarRegime(id, regime);
+            await api.atualizarTurno(id, turno);
             await api.atualizarRegrasAlmoco(id, { tolerancia_almoco_min, almoco_flexivel });
             await api.salvarJornada(id, jornada);
             await api.atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo, departamento });

@@ -85,47 +85,72 @@ async function atualizarJornadaCompleta(funcionarioId, jornada) {
     await registrarAuditoria('atualizar_jornada', 'funcionario', funcionarioId, jornada);
 }
 
+/**
+ * A coluna `turno` chega na migração 0004. Se o banco ainda não tiver sido migrado,
+ * um SELECT citando essa coluna derruba a consulta inteira — e com ela várias telas
+ * do painel de uma vez. Este helper tenta com a coluna e, só no caso específico de
+ * "coluna inexistente", repete sem ela (o front deduz o turno pelo horário de entrada).
+ * Assim a ordem entre publicar o código e rodar a migração deixa de quebrar o sistema.
+ */
+async function consultarComTurnoOpcional(executar) {
+    try {
+        return await executar(true);
+    } catch (erro) {
+        // SQLite usa mensagens diferentes conforme o comando:
+        //   SELECT → "no such column: turno" | INSERT → "table ... has no column named turno"
+        const texto = String((erro && erro.message) || '');
+        const colunaAusente = /no such column: .*turno/i.test(texto) || /has no column named turno/i.test(texto);
+        if (!colunaAusente) throw erro;
+
+        console.warn('Coluna "turno" ausente — rode: wrangler d1 migrations apply. Seguindo sem ela por enquanto.');
+        return executar(false);
+    }
+}
+
 /** Lista pública (sem o hash do PIN) — usada no mural de bater ponto e nos seletores. */
 async function listarAtivos() {
-    return db.all(
-        `SELECT id, emoji, nome, regime, horas_diarias, tolerancia_almoco_min, almoco_flexivel
+    return consultarComTurnoOpcional((comTurno) => db.all(
+        `SELECT id, emoji, nome, regime, ${comTurno ? 'turno,' : ''} horas_diarias, tolerancia_almoco_min, almoco_flexivel
          FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`
-    );
+    ));
 }
 
 /** Lista completa (uso administrativo), com a jornada de cada um já embutida (jornada: {...}). */
 async function listarTodos() {
-    const funcionarios = await db.all(
-        `SELECT id, emoji, nome, regime, horas_diarias, tolerancia_almoco_min, almoco_flexivel,
+    const funcionarios = await consultarComTurnoOpcional((comTurno) => db.all(
+        `SELECT id, emoji, nome, regime, ${comTurno ? 'turno,' : ''} horas_diarias, tolerancia_almoco_min, almoco_flexivel,
                 data_admissao, salario_base, cargo, departamento, ativo
          FROM funcionarios ORDER BY nome ASC`
-    );
+    ));
     const jornadas = await buscarJornadaDeTodos();
     return funcionarios.map((f) => ({ ...f, jornada: jornadas[f.id] || {} }));
 }
 
 async function buscarPorId(id) {
-    const funcionario = await db.get(
-        `SELECT id, emoji, nome, regime, horas_diarias, tolerancia_almoco_min, almoco_flexivel,
+    const funcionario = await consultarComTurnoOpcional((comTurno) => db.get(
+        `SELECT id, emoji, nome, regime, ${comTurno ? 'turno,' : ''} horas_diarias, tolerancia_almoco_min, almoco_flexivel,
                 data_admissao, salario_base, cargo, departamento, ativo
          FROM funcionarios WHERE id = ?`,
         [id]
-    );
+    ));
     if (!funcionario) return null;
     funcionario.jornada = await buscarJornada(id);
     return funcionario;
 }
 
-async function criar({ emoji, nome, regime, horas_diarias, pin, tolerancia_almoco_min, almoco_flexivel, data_admissao, salario_base, cargo, departamento }) {
+async function criar({ emoji, nome, regime, turno, horas_diarias, pin, tolerancia_almoco_min, almoco_flexivel, data_admissao, salario_base, cargo, departamento }) {
     const pinHash = await bcrypt.hash(pin, 10);
     const toleranciaPadrao = tolerancia_almoco_min ?? (regime === 'ESTAGIARIO' ? 15 : 60);
 
-    const { lastID } = await db.run(
-        `INSERT INTO funcionarios (emoji, nome, regime, horas_diarias, pin_hash, tolerancia_almoco_min, almoco_flexivel, data_admissao, salario_base, cargo, departamento)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [emoji, nome, regime, horas_diarias, pinHash, toleranciaPadrao, almoco_flexivel ? 1 : 0,
-            data_admissao || null, salario_base ?? null, cargo || null, departamento || null]
-    );
+    const { lastID } = await consultarComTurnoOpcional((comTurno) => db.run(
+        `INSERT INTO funcionarios (emoji, nome, regime, ${comTurno ? 'turno,' : ''} horas_diarias, pin_hash, tolerancia_almoco_min, almoco_flexivel, data_admissao, salario_base, cargo, departamento)
+         VALUES (?, ?, ?, ${comTurno ? '?,' : ''} ?, ?, ?, ?, ?, ?, ?, ?)`,
+        comTurno
+            ? [emoji, nome, regime, turno || 'manha_tarde', horas_diarias, pinHash, toleranciaPadrao, almoco_flexivel ? 1 : 0,
+                data_admissao || null, salario_base ?? null, cargo || null, departamento || null]
+            : [emoji, nome, regime, horas_diarias, pinHash, toleranciaPadrao, almoco_flexivel ? 1 : 0,
+                data_admissao || null, salario_base ?? null, cargo || null, departamento || null]
+    ));
 
     await criarJornadaPadrao(lastID, regime);
     await registrarAuditoria('criar', 'funcionario', lastID, { nome, regime });
@@ -168,6 +193,22 @@ async function atualizarAtivo(id, ativo) {
 async function atualizarRegime(id, regime) {
     await db.run(`UPDATE funcionarios SET regime = ? WHERE id = ?`, [regime, id]);
     await registrarAuditoria('atualizar_regime', 'funcionario', id, { regime });
+}
+
+/** Troca de turno (Manhã/Tarde <-> Tarde/Noite) — muda com a escala da pessoa. */
+async function atualizarTurno(id, turno) {
+    try {
+        await db.run(`UPDATE funcionarios SET turno = ? WHERE id = ?`, [turno, id]);
+    } catch (erro) {
+        const texto = String((erro && erro.message) || '');
+        if (/no such column/i.test(texto) || /has no column named/i.test(texto)) {
+            const e = new Error('O campo de turno ainda não existe no banco. Rode: wrangler d1 migrations apply');
+            e.status = 409;
+            throw e;
+        }
+        throw erro;
+    }
+    await registrarAuditoria('atualizar_turno', 'funcionario', id, { turno });
 }
 
 /**
@@ -221,6 +262,7 @@ module.exports = {
     atualizarDadosCadastrais,
     atualizarAtivo,
     atualizarRegime,
+    atualizarTurno,
     removerOuDemitir,
     conferirPin
 };

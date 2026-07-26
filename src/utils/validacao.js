@@ -49,6 +49,15 @@ function exigirPin(valor, nomeCampo = 'pin') {
     return valor;
 }
 
+const TURNOS_VALIDOS = ['manha_tarde', 'tarde_noite'];
+
+function exigirTurno(valor) {
+    if (!TURNOS_VALIDOS.includes(valor)) {
+        throw new ErroValidacao('Turno inválido. Use manha_tarde ou tarde_noite.');
+    }
+    return valor;
+}
+
 function exigirRegime(valor) {
     if (!['CLT', 'ESTAGIARIO', 'PJ'].includes(valor)) {
         throw new ErroValidacao(`Regime inválido. Use CLT, ESTAGIARIO ou PJ.`);
@@ -107,5 +116,7 @@ module.exports = {
     exigirValorMonetarioOpcional,
     exigirPin,
     exigirRegime,
-    exigirDescritorFacial
+    exigirTurno,
+    exigirDescritorFacial,
+    TURNOS_VALIDOS
 };

@@ -3,7 +3,24 @@ const app = new Hono();
 
 const db = require('../db/db');
 const { exigirAutorizacaoAdmin } = require('../middleware/adminAuth');
-const { registrarAuditoria } = require('../utils/auditoria');
+const { registrarAuditoria, listarAuditoria, listarAcoesDisponiveis } = require('../utils/auditoria');
+
+// Log de auditoria — quem alterou o quê, quando e de onde.
+app.get('/auditoria', exigirAutorizacaoAdmin, async (c) => {
+    const q = c.req.query();
+    return c.json(await listarAuditoria({
+        dataInicio: q.inicio || null,
+        dataFim: q.fim || null,
+        adminId: q.admin_id ? Number(q.admin_id) : null,
+        acao: q.acao || null,
+        limite: q.limite ? Number(q.limite) : 200,
+        offset: q.offset ? Number(q.offset) : 0
+    }));
+});
+
+app.get('/auditoria/acoes', exigirAutorizacaoAdmin, async (c) => {
+    return c.json(await listarAcoesDisponiveis());
+});
 
 // Percentuais de hora extra configuráveis (60% em dia útil, 100% em domingo/feriado, etc — ver
 // src/services/calculoJornada.service.js pra onde isso é aplicado no cálculo).

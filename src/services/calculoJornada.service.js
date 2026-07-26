@@ -69,12 +69,38 @@ function calcularMetaMinutos(dataISO, jornadaPorGrupo, ehFeriado) {
     return cfg ? cfg.meta_minutos : 0;
 }
 
-/** Saldo do dia (diferença entre trabalhado e meta), formatado como string "+/-HH:MM" ou "---". */
-function calcularSaldo(totalMinutos, metaMinutos, pontos) {
+/**
+ * Saldo do dia em MINUTOS, já com a regra de tolerância da empresa aplicada.
+ *
+ * Atraso de até 10 minutos (config.jornada.minutosAtrasoSemDescontoNoSaldo) não pode
+ * deixar o dia negativo: o atraso continua sendo contabilizado e exibido, mas o saldo
+ * é elevado a zero na medida exata do atraso perdoado. Acima de 10 minutos não há
+ * perdão nenhum — o atraso inteiro pesa no saldo.
+ *
+ * O perdão cobre no máximo o próprio atraso: quem chegou 8 min tarde E saiu 30 min
+ * mais cedo continua com -30 min de saldo (só os 8 do atraso são relevados).
+ *
+ * Devolve null quando não dá para calcular saldo (sem meta, sem entrada ou sem saída).
+ */
+function calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, atrasoMinutos = 0) {
     if (metaMinutos === 0 || totalMinutos === 0 || !pontos.ENTRADA || !pontos.SAIDA) {
-        return '---';
+        return null;
     }
-    return minutosParaStr(totalMinutos - metaMinutos, true);
+
+    const saldoBruto = totalMinutos - metaMinutos;
+    const limite = config.jornada.minutosAtrasoSemDescontoNoSaldo;
+    const dentroDaTolerancia = atrasoMinutos > 0 && atrasoMinutos <= limite;
+    if (!dentroDaTolerancia || saldoBruto >= 0) return saldoBruto;
+
+    // Devolve ao saldo só o que foi perdido pelo atraso tolerado, sem virar crédito.
+    return Math.min(0, saldoBruto + atrasoMinutos);
+}
+
+/** Saldo do dia formatado como "+/-HH:MM" ou "---". */
+function calcularSaldo(totalMinutos, metaMinutos, pontos, atrasoMinutos = 0) {
+    const saldo = calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, atrasoMinutos);
+    if (saldo === null) return '---';
+    return minutosParaStr(saldo, true);
 }
 
 /**
@@ -191,7 +217,8 @@ function montarRelatorioDia({ funcionario, dataISO, pontos, justificativas, ehFe
     const atrasoAlmoco = calcularAtrasoAlmocoMinutos(pontos, funcionario.tolerancia_almoco_min, !!funcionario.almoco_flexivel);
     const atrasoTotal = atrasoEntrada + atrasoAlmoco;
     const metaMinutos = calcularMetaMinutos(dataISO, jornadaPorGrupo, ehFeriado);
-    const saldo = calcularSaldo(totalMinutos, metaMinutos, pontos);
+    const saldo = calcularSaldo(totalMinutos, metaMinutos, pontos, atrasoTotal);
+    const saldoMinutos = calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, atrasoTotal);
     const horasExtras = calcularHorasExtras(totalMinutos, metaMinutos, dataISO, ehFeriado, percentuaisHorasExtras);
     const cfgGrupoHoje = configDoGrupoNaData(dataISO, jornadaPorGrupo);
 
@@ -222,7 +249,8 @@ function montarRelatorioDia({ funcionario, dataISO, pontos, justificativas, ehFe
         atrasoMinutos: atrasoTotal,
         ehFeriado: !!ehFeriado,
         saldo,
-        saldoMinutos: (metaMinutos === 0 || totalMinutos === 0 || !pontos.ENTRADA || !pontos.SAIDA) ? null : (totalMinutos - metaMinutos),
+        saldoMinutos,
+        atrasoToleradoNoSaldo: atrasoTotal > 0 && atrasoTotal <= config.jornada.minutosAtrasoSemDescontoNoSaldo,
         horas_extras: {
             tempo: horasExtras.minutosExtra > 0 ? minutosParaStr(horasExtras.minutosExtra) : '00:00',
             tipo: horasExtras.tipoExtra,
@@ -245,6 +273,7 @@ module.exports = {
     calcularAtrasoAlmocoMinutos,
     calcularMetaMinutos,
     calcularSaldo,
+    calcularSaldoMinutos,
     calcularHorasExtras,
     calcularMinutosNoturnos,
     calcularValorHora,

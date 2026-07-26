@@ -15,6 +15,21 @@ app.get('/', exigirTotem, async (c) => {
     return c.json(await funcionariosService.listarAtivos());
 });
 
+/**
+ * Confere o PIN pessoal do funcionário, no totem. Protege dados que são só dele:
+ * o histórico de ponto e a confirmação do espelho. Sem isso, qualquer pessoa no
+ * tablet conseguia abrir o histórico de qualquer colega.
+ */
+app.post('/:id/verificar-pin', exigirTotem, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const body = await c.req.json();
+    const pin = exigirPin(body.pin);
+
+    const confere = await funcionariosService.conferirPin(id, pin);
+    if (!confere) return c.json({ message: 'PIN incorreto.' }, 401);
+    return c.json({ ok: true });
+});
+
 // Lista completa (inclui inativos) — uso administrativo.
 app.get('/todos', exigirAutorizacaoAdmin, async (c) => {
     return c.json(await funcionariosService.listarTodos());

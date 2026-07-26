@@ -1,6 +1,5 @@
 import { api } from '../api.js';
 import { escapeHtml, primeiroNome } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 
 /**
  * Painel "situação agora": mostra TODO o time classificado — quem está trabalhando,
@@ -190,7 +189,7 @@ function renderizar(d) {
 
 /* ===================== Dashboard (listas resumidas na tela inicial) ===================== */
 
-function renderizarResumoDashboard(d) {
+export function renderizarResumoDashboard(d) {
     const presentes = document.getElementById('lista-presentes-agora');
     const naoChegaram = document.getElementById('lista-nao-chegaram');
     if (!presentes || !naoChegaram) return;
@@ -229,7 +228,7 @@ export async function carregarPendencias() {
 
     let dados;
     try {
-        dados = await comAutorizacao(() => api.pendencias());
+        dados = await api.pendencias();
     } catch (erro) {
         const msg = erro.message === 'cancelado'
             ? 'Acesso cancelado.'

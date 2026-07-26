@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, descreverErroCamera } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 import { carregarModelos, capturarDescritor } from '../faceRecognition.js';
 import { confirmar } from '../confirmar.js';
 
@@ -32,8 +31,8 @@ export async function renderizarAbaBiometria() {
     let funcionarios, resumo, modelosOk;
     try {
         [funcionarios, resumo, modelosOk] = await Promise.all([
-            comAutorizacao(() => api.listarFuncionariosTodos()),
-            comAutorizacao(() => api.resumoBiometria()),
+            api.listarFuncionariosTodos(),
+            api.resumoBiometria(),
             carregarModelos()
         ]);
     } catch (e) {
@@ -103,7 +102,7 @@ export async function renderizarAbaBiometria() {
             }
 
             try {
-                const resp = await comAutorizacao(() => api.cadastrarBiometria(id, descritor));
+                const resp = await api.cadastrarBiometria(id, descritor);
                 toast(resp.message, 'sucesso');
                 pararCamera();
                 renderizarAbaBiometria();
@@ -123,7 +122,7 @@ export async function renderizarAbaBiometria() {
             );
             if (!ok) return;
             try {
-                await comAutorizacao(() => api.removerBiometria(id));
+                await api.removerBiometria(id);
                 toast('Amostras removidas.', 'sucesso');
                 renderizarAbaBiometria();
             } catch (e) {

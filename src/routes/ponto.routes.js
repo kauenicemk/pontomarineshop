@@ -30,6 +30,32 @@ app.post('/ajuste-ponto', exigirAutorizacaoAdmin, async (c) => {
     return c.json({ message: 'Ajuste manual gravado com sucesso!' });
 });
 
+// Batidas de um funcionário num dia — alimenta a tela de correção de ponto.
+app.get('/pontos-do-dia', exigirAutorizacaoAdmin, async (c) => {
+    const funcionarioId = exigirInteiro(c.req.query('funcionario_id'), 'funcionario_id');
+    const data = exigirData(c.req.query('data'), 'data');
+    return c.json(await pontoService.listarPontosDoDia(funcionarioId, data));
+});
+
+// Corrigir o horário de uma batida existente (justificativa obrigatória, fica auditado).
+app.put('/ponto/:id', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const body = await c.req.json();
+    const hora = exigirHora(body.hora, 'hora');
+    const justificativa = exigirTexto(body.justificativa, 'justificativa', { maxLen: 300 });
+    await pontoService.editarPonto(id, { hora, justificativa });
+    return c.json({ message: 'Horário corrigido com sucesso!' });
+});
+
+// Apagar uma batida errada (justificativa obrigatória, fica auditado).
+app.delete('/ponto/:id', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const body = await c.req.json().catch(() => ({}));
+    const justificativa = exigirTexto(body.justificativa, 'justificativa', { maxLen: 300 });
+    await pontoService.removerPonto(id, justificativa);
+    return c.json({ message: 'Registro removido com sucesso!' });
+});
+
 // "Meu histórico" — visto no próprio totem, depois de identificar o funcionário. Exige token do totem.
 app.get('/meu-historico/:id', exigirTotem, async (c) => {
     const id = exigirInteiro(c.req.param('id'), 'id');

@@ -1,6 +1,5 @@
 import { api } from '../api.js';
 import { escapeHtml, primeiroNome, mesAtualISO } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 
 function primeiroEUltimoDiaDoMes(mesISO) {
     const [ano, mes] = mesISO.split('-').map(Number);
@@ -42,7 +41,7 @@ export async function carregarIndicadores() {
 
     let dados;
     try {
-        dados = await comAutorizacao(() => api.indicadoresGerais(inicio, fim));
+        dados = await api.indicadoresGerais(inicio, fim);
     } catch (e) {
         container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
         return;

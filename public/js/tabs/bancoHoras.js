@@ -1,6 +1,5 @@
 import { api } from '../api.js';
 import { escapeHtml, mesAtualISO } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 
 /**
  * A versão anterior usava Chart.js carregado de um CDN externo (cdnjs.cloudflare.com).
@@ -248,7 +247,7 @@ export async function renderizarGraficoBanco() {
     try {
         const inicio = mesSelecionado ? `${mesSelecionado}-01` : undefined;
         const fim = mesSelecionado ? `${mesSelecionado}-31` : undefined;
-        dados = await comAutorizacao(() => api.relatorioCalculado(inicio, fim));
+        dados = await api.relatorioCalculado(inicio, fim);
     } catch (e) {
         if (e.message !== 'cancelado') desenharMensagem(ctx, largura, altura, 'Não foi possível carregar os dados.');
         return;

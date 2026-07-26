@@ -588,6 +588,15 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 .check-falta, #faltas-selecionar-todos { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
 tr.selecionada { background: var(--accent-suave); }
 
+/* Editor de pontos do dia */
+.cabecalho-editor {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; background: var(--card-2); border: 1px solid var(--border);
+    border-radius: var(--raio-sm); margin-bottom: 12px; font-size: 13.5px;
+}
+.bloco-adicionar { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.campo-hora-registro { min-height: 38px; padding: 7px 10px; }
+
 .modal-box-justificar { max-width: 460px; text-align: left; }
 .modal-box-justificar h3 { text-align: center; }
 .lista-revisao {

@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, paraMinutos, minutosParaHoras } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
 import { turnoDoFuncionario, ROTULOS_TURNO, HORA_CORTE_TURNO } from '../turno.js';
 
@@ -40,7 +39,7 @@ export async function renderizarAbaConfig() {
 
     let funcionarios;
     try {
-        funcionarios = await comAutorizacao(() => api.listarFuncionariosTodos());
+        funcionarios = await api.listarFuncionariosTodos();
     } catch (e) {
         container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
         return;
@@ -222,12 +221,10 @@ async function salvarLinha(linha) {
     const departamento = linha.querySelector('.input-departamento').value.trim() || null;
 
     try {
-        await comAutorizacao(async () => {
-            await api.atualizarRegime(id, regime);
-            await api.atualizarRegrasAlmoco(id, { tolerancia_almoco_min, almoco_flexivel });
-            await api.salvarJornada(id, jornada);
-            await api.atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo, departamento });
-        });
+        await api.atualizarRegime(id, regime);
+        await api.atualizarRegrasAlmoco(id, { tolerancia_almoco_min, almoco_flexivel });
+        await api.salvarJornada(id, jornada);
+        await api.atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo, departamento });
         toast('Configuração salva com sucesso!', 'sucesso');
         renderizarAbaConfig();
     } catch (e) {
@@ -237,7 +234,7 @@ async function salvarLinha(linha) {
 
 async function efetivar(id) {
     try {
-        await comAutorizacao(() => api.atualizarRegime(id, 'CLT'));
+        await api.atualizarRegime(id, 'CLT');
         toast('Estagiário efetivado como CLT!', 'sucesso');
         renderizarAbaConfig();
     } catch (e) {
@@ -255,7 +252,7 @@ async function demitir(linha) {
     );
     if (!ok) return;
     try {
-        const resp = await comAutorizacao(() => api.removerFuncionario(id));
+        const resp = await api.removerFuncionario(id);
         toast(resp.message, 'sucesso');
         document.dispatchEvent(new CustomEvent('funcionario-cadastrado')); // reaproveita o mesmo evento para recarregar tudo
         renderizarAbaConfig();
@@ -266,7 +263,7 @@ async function demitir(linha) {
 
 async function readmitir(id) {
     try {
-        await comAutorizacao(() => api.atualizarAtivo(id, true));
+        await api.atualizarAtivo(id, true);
         toast('Funcionário readmitido com sucesso!', 'sucesso');
         document.dispatchEvent(new CustomEvent('funcionario-cadastrado'));
         renderizarAbaConfig();

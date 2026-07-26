@@ -21,6 +21,7 @@ import * as analytics from './tabs/analytics.js';
 import * as espelho from './tabs/espelho.js';
 import * as dashboard from './tabs/dashboard.js';
 import * as auditoria from './tabs/auditoria.js';
+import * as editorPontos from './tabs/editorPontos.js';
 
 const ehModoAdmin = window.location.pathname.startsWith('/admin');
 
@@ -64,6 +65,9 @@ function mudarTotemAba(nomeAba, botao) {
 
     if (nomeAba !== 'bater-ponto') baterPonto.pararReconhecimentoFacial();
     else baterPonto.autoAbrirCamera();
+
+    // Sair do "Meu Histórico" fecha o acesso: o próximo consulta pede o PIN de novo.
+    if (nomeAba !== 'historico') historico.bloquearHistorico();
 }
 
 function iniciarNavegacaoTotem() {
@@ -170,12 +174,13 @@ async function recarregarFuncionariosDoAdmin() {
 function carregarConteudoAdminAba(nomeAba) {
     clearInterval(intervaloPendencias);
 
+    // O dashboard já traz a situação detalhada do time na mesma resposta —
+    // uma chamada por ciclo, em vez de duas.
     if (nomeAba === 'dashboard') {
         dashboard.carregarDashboard();
-        pendencias.carregarPendencias();
-        intervaloPendencias = setInterval(() => { dashboard.carregarDashboard(); pendencias.carregarPendencias(); }, 30000);
+        intervaloPendencias = setInterval(() => dashboard.carregarDashboard(), 30000);
     }
-    if (nomeAba === 'gestor') { gestor.carregarGavetasGerais(); gestor.renderizarRelatorioGestor(); }
+    if (nomeAba === 'gestor') { editorPontos.iniciarEditorPontos(); gestor.carregarGavetasGerais(); gestor.renderizarRelatorioGestor(); }
     if (nomeAba === 'config') config.renderizarAbaConfig();
     if (nomeAba === 'pendencias') {
         pendencias.carregarPendencias();
@@ -216,7 +221,11 @@ function iniciarNavegacaoAdmin() {
 }
 
 function iniciarBotoesAdmin() {
-    document.getElementById('btn-salvar-ajuste')?.addEventListener('click', (ev) => comBotaoOcupado(ev.currentTarget, () => gestor.salvarAjusteManual()));
+    // Qualquer correção de ponto recarrega o relatório e o histórico, que mudaram junto.
+    document.addEventListener('ponto-alterado', () => {
+        gestor.carregarGavetasGerais();
+        gestor.renderizarRelatorioGestor();
+    });
     document.getElementById('btn-exportar-csv')?.addEventListener('click', () => gestor.exportarPlanilhaParaExcel());
     document.getElementById('btn-filtrar-gestor')?.addEventListener('click', () => gestor.renderizarRelatorioGestor());
 

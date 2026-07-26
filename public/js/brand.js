@@ -36,12 +36,18 @@ export function montarLogos() {
 
         slot.innerHTML = `
             <span class="marca-logo-simbolo">
-                <img src="${BRAND.logoUrl}" alt="Logo ${BRAND.empresa}"
-                     onload="this.closest('.marca-logo-simbolo').classList.add('com-imagem')"
-                     onerror="this.closest('.marca-logo-simbolo').classList.add('sem-imagem')">
+                <img src="${BRAND.logoUrl}" alt="Logo ${BRAND.empresa}">
                 <span class="marca-monograma" aria-hidden="true">${BRAND.monograma}</span>
             </span>
             ${nomeHtml}`;
+
+        // Listeners em JS, sem onload=/onerror= no HTML: atributos inline seriam
+        // bloqueados pela Content-Security-Policy (script-src 'self', sem unsafe-inline).
+        const simbolo = slot.querySelector('.marca-logo-simbolo');
+        const img = simbolo.querySelector('img');
+        img.addEventListener('load', () => simbolo.classList.add('com-imagem'));
+        img.addEventListener('error', () => simbolo.classList.add('sem-imagem'));
+        if (img.complete && img.naturalWidth > 0) simbolo.classList.add('com-imagem');
     });
 
     document.title = BRAND.nome;

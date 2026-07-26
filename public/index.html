@@ -264,25 +264,20 @@
             </div>
 
             <div class="card">
-                <h2>Ajuste Manual de Ponto</h2>
+                <h2>Corrigir Ponto do Dia</h2>
+                <p class="nota-rodape" style="margin:0 0 14px;">
+                    Escolha o colaborador e a data para ver as batidas daquele dia. Você pode corrigir
+                    o horário, apagar um registro errado ou lançar um que faltou. Toda alteração exige
+                    justificativa e fica registrada no log de auditoria.
+                </p>
                 <div class="filtros">
                     <label>Funcionário
                         <select id="select-f-ajuste"></select>
                     </label>
                     <label>Data <input type="date" id="ajuste-data"></label>
-                    <label>Hora <input type="time" id="ajuste-hora"></label>
-                    <label>Tipo
-                        <select id="ajuste-tipo">
-                            <option>Entrada</option>
-                            <option>Saída Almoço</option>
-                            <option>Retorno Almoço</option>
-                            <option>Saída Final</option>
-                        </select>
-                    </label>
+                    <button class="btn btn-principal" id="btn-carregar-pontos" style="margin:0;">Ver batidas do dia</button>
                 </div>
-                <input type="text" id="ajuste-justificativa" class="campo" placeholder="Justificativa do ajuste (obrigatória)" style="margin-bottom:10px;">
-                <button class="btn btn-principal" id="btn-salvar-ajuste">Salvar Ajuste</button>
-                <p class="nota-rodape">Todo ajuste manual fica registrado no log de auditoria.</p>
+                <div id="editor-pontos"></div>
             </div>
 
             <div class="card">
@@ -658,6 +653,21 @@
         <div class="modal-botoes">
             <button class="btn btn-secundario" id="btn-cancelar-justificativa">Cancelar</button>
             <button class="btn btn-principal" id="btn-confirmar-justificativa">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalJustificarPonto">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="justificativa-ponto-titulo">
+        <h3 id="justificativa-ponto-titulo">Justificar alteração</h3>
+        <p class="confirmar-texto" id="justificativa-ponto-info"></p>
+        <input type="text" class="campo" id="justificativa-ponto-texto" maxlength="300"
+               placeholder="Motivo da alteração" autocomplete="off"
+               style="text-align:left; letter-spacing:normal; font-size:14px;">
+        <p class="erro-msg" id="justificativa-ponto-erro" role="alert"></p>
+        <div class="modal-botoes">
+            <button type="button" class="btn btn-secundario" id="btn-cancelar-justificativa-ponto">Cancelar</button>
+            <button type="button" class="btn btn-principal" id="btn-confirmar-justificativa-ponto">Confirmar</button>
         </div>
     </div>
 </div>

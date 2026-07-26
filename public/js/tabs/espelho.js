@@ -3,6 +3,7 @@ import { toast } from '../toast.js';
 import { escapeHtml, mesAtualISO } from '../utils.js';
 import { BRAND } from '../brand.js';
 import { getTotemToken } from '../auth.js';
+import { pedirPin } from '../pin.js';
 
 let funcionarioAtualId = null;
 let mesAtualRef = null;
@@ -100,8 +101,8 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
             ${confirmacao.confirmado
                 ? `<p class="espelho-confirmado">✅ Confirmado por este colaborador em ${new Date(confirmacao.confirmado_em.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</p>`
                 : (getTotemToken()
-                    ? `<button class="action-btn" id="btn-confirmar-espelho" style="width:auto; padding:8px 16px;">✅ Confirmo que revisei este espelho</button>
-                       <p style="color:var(--text-muted); font-size:11.5px; margin-top:6px;">Essa confirmação deve ser feita pelo próprio colaborador.</p>`
+                    ? `<button class="action-btn" id="btn-confirmar-espelho" style="width:auto; padding:8px 16px;">Confirmo que revisei este espelho</button>
+                       <p style="color:var(--texto-mudo); font-size:11.5px; margin-top:6px;">Será pedido o seu PIN pessoal para confirmar.</p>`
                     : `<p style="color:var(--text-muted); font-size:11.5px;">Ainda não confirmado pelo colaborador — a confirmação é feita por ele, no totem da empresa.</p>`)
             }
         </div>
@@ -113,6 +114,10 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
     `;
 
     document.getElementById('btn-confirmar-espelho')?.addEventListener('click', async () => {
+        // Confirmar o espelho é uma declaração com peso trabalhista ("revisei e concordo"),
+        // então exige o PIN pessoal — ninguém confirma no lugar de outra pessoa.
+        const liberado = await pedirPin(funcionarioAtualId, nomeFuncionario);
+        if (!liberado) return;
         try {
             await api.confirmarEspelho(funcionarioAtualId, mesAtualRef);
             toast('Espelho confirmado!', 'sucesso');

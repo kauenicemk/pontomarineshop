@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, mesAtualISO } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 import { abrirEspelho } from './espelho.js';
 
 function formatarReais(valor) {
@@ -53,7 +52,7 @@ export async function carregarRelatorioIndividual() {
 
     let r;
     try {
-        r = await comAutorizacao(() => api.relatorioIndividual(id, inicio, fim));
+        r = await api.relatorioIndividual(id, inicio, fim);
     } catch (e) {
         resumo.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
         return;
@@ -119,7 +118,7 @@ export async function abrirEspelhoDoIndividual() {
         return;
     }
     const nome = sel.selectedOptions[0].textContent;
-    await abrirEspelho(id, nome, (funcionarioId, inicio, fim) => comAutorizacao(() => api.relatorioIndividual(funcionarioId, inicio, fim)));
+    await abrirEspelho(id, nome, (funcionarioId, inicio, fim) => api.relatorioIndividual(funcionarioId, inicio, fim));
 }
 
 export function exportarRelatorioIndividualCSV() {

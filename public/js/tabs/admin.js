@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
 import { getAdminId } from '../auth.js';
 
@@ -44,7 +43,7 @@ export function iniciarZonaDePerigo() {
 export async function carregarConfigHorasExtras() {
     const container = document.getElementById('lista-config-horas-extras');
     try {
-        const regras = await comAutorizacao(() => api.listarConfigHorasExtras());
+        const regras = await api.listarConfigHorasExtras();
         const rotulos = { dia_util: 'Dia útil (seg. a sáb.)', domingo_feriado: 'Domingo / Feriado', adicional_noturno: 'Adicional noturno (22h–5h)' };
         const ordem = ['dia_util', 'domingo_feriado', 'adicional_noturno'];
         const ordenadas = [...regras].sort((a, b) => ordem.indexOf(a.tipo) - ordem.indexOf(b.tipo));
@@ -66,7 +65,7 @@ export async function carregarConfigHorasExtras() {
                 const tipo = linha.dataset.tipo;
                 const percentual = parseFloat(linha.querySelector('.input-percentual').value) / 100;
                 try {
-                    await comAutorizacao(() => api.salvarConfigHorasExtras(tipo, percentual));
+                    await api.salvarConfigHorasExtras(tipo, percentual);
                     toast('Percentual atualizado!', 'sucesso');
                 } catch (e) {
                     if (e.message !== 'cancelado') toast(e.message, 'erro');
@@ -95,7 +94,7 @@ export async function cadastrarFuncionario() {
     }
 
     try {
-        await comAutorizacao(() => api.criarFuncionario({ nome, emoji, regime, horas_diarias, pin, data_admissao, salario_base, cargo, departamento }));
+        await api.criarFuncionario({ nome, emoji, regime, horas_diarias, pin, data_admissao, salario_base, cargo, departamento });
         toast('Funcionário cadastrado com sucesso!', 'sucesso');
         ['novo-func-nome', 'novo-func-emoji', 'novo-func-horas', 'novo-func-pin', 'novo-func-admissao', 'novo-func-salario', 'novo-func-cargo', 'novo-func-departamento']
             .forEach((id) => { document.getElementById(id).value = ''; });

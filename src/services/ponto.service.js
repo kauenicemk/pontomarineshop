@@ -7,6 +7,11 @@ const { registrarAuditoria } = require('../utils/auditoria');
 // atraso do relatório (esse usa a regra da CLT/config, com a tolerância de 10 minutos).
 const TOLERANCIA_ATRASO_PENDENCIA_MIN = 10;
 
+// Tetos das listagens. Sem eles, as consultas crescem para sempre junto com o
+// histórico e um dia começam a travar a tela (e a custar mais no D1).
+const LIMITE_HISTORICO_INDIVIDUAL = 200;  // "Meu Histórico" no totem
+const LIMITE_HISTORICO_GERAL = 2000;      // Histórico Geral do painel
+
 /**
  * Valida a sequência lógica das batidas do dia ANTES de gravar — impede registro duplicado
  * (duas Entradas) e fora de ordem (Retorno sem Saída Almoço, Saída Final sem Entrada...).
@@ -96,6 +101,89 @@ async function ajustarPontoManual({ funcionario_id, data, hora, tipo, justificat
     return { id: lastID };
 }
 
+/* ===================== Edição de batidas já registradas ===================== */
+
+/** Registros brutos de um funcionário num dia — base da tela de correção de ponto. */
+async function listarPontosDoDia(funcionarioId, data) {
+    const funcionario = await db.get(`SELECT id, nome, emoji FROM funcionarios WHERE id = ?`, [funcionarioId]);
+    if (!funcionario) {
+        const erro = new Error('Funcionário não encontrado.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    const registros = await db.all(
+        `SELECT id, tipo, hora, justificativa, ajuste_manual, criado_em
+         FROM registro_ponto WHERE funcionario_id = ? AND data = ?
+         ORDER BY data_hora_iso ASC`,
+        [funcionarioId, data]
+    );
+    return { funcionario, data, registros };
+}
+
+/**
+ * Corrige o HORÁRIO de uma batida existente. O tipo não muda: trocar "Entrada" por
+ * "Saída" seria mais confuso do que apagar e lançar de novo. Toda edição exige
+ * justificativa, marca o registro como ajuste manual e guarda o valor ANTERIOR na
+ * auditoria — assim dá para saber o que havia antes da correção.
+ */
+async function editarPonto(id, { hora, justificativa }) {
+    const registro = await db.get(
+        `SELECT r.id, r.funcionario_id, r.data, r.hora, r.tipo, f.nome
+         FROM registro_ponto r JOIN funcionarios f ON f.id = r.funcionario_id
+         WHERE r.id = ?`,
+        [id]
+    );
+    if (!registro) {
+        const erro = new Error('Registro de ponto não encontrado.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    const horaCompleta = `${hora}:00`;
+    await db.run(
+        `UPDATE registro_ponto
+         SET hora = ?, data_hora_iso = ?, justificativa = ?, ajuste_manual = 1
+         WHERE id = ?`,
+        [horaCompleta, `${registro.data}T${horaCompleta}`, justificativa, id]
+    );
+
+    await registrarAuditoria('editar_ponto', 'registro_ponto', id, {
+        funcionario: registro.nome,
+        data: registro.data,
+        tipo: registro.tipo,
+        hora_anterior: (registro.hora || '').substring(0, 5),
+        hora_nova: hora,
+        justificativa
+    });
+    return { id };
+}
+
+/** Apaga uma batida errada. Exige justificativa e guarda o registro removido na auditoria. */
+async function removerPonto(id, justificativa) {
+    const registro = await db.get(
+        `SELECT r.id, r.funcionario_id, r.data, r.hora, r.tipo, f.nome
+         FROM registro_ponto r JOIN funcionarios f ON f.id = r.funcionario_id
+         WHERE r.id = ?`,
+        [id]
+    );
+    if (!registro) {
+        const erro = new Error('Registro de ponto não encontrado.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    await db.run(`DELETE FROM registro_ponto WHERE id = ?`, [id]);
+    await registrarAuditoria('remover_ponto', 'registro_ponto', id, {
+        funcionario: registro.nome,
+        data: registro.data,
+        tipo: registro.tipo,
+        hora_removida: (registro.hora || '').substring(0, 5),
+        justificativa
+    });
+    return { id };
+}
+
 async function historicoIndividual(funcionarioId) {
     const funcionario = await db.get(
         `SELECT id, nome, emoji, regime, horas_diarias FROM funcionarios WHERE id = ?`,
@@ -103,11 +191,15 @@ async function historicoIndividual(funcionarioId) {
     );
     if (!funcionario) return null;
 
+    // Teto de segurança: sem limite, a consulta cresce indefinidamente com os anos
+    // e um dia trava o totem. O funcionário vê o histórico recente aqui; o período
+    // completo sai no espelho de ponto, que é filtrado por mês.
     const registros = await db.all(
-        `SELECT data, hora, tipo, justificativa FROM registro_ponto WHERE funcionario_id = ? ORDER BY data_hora_iso DESC`,
-        [funcionario.id]
+        `SELECT data, hora, tipo, justificativa FROM registro_ponto
+         WHERE funcionario_id = ? ORDER BY data_hora_iso DESC LIMIT ?`,
+        [funcionario.id, LIMITE_HISTORICO_INDIVIDUAL]
     );
-    return { funcionario, registros };
+    return { funcionario, registros, limite: LIMITE_HISTORICO_INDIVIDUAL };
 }
 
 /** Histórico geral já filtrado por período no SQL (antes era baixado tudo e filtrado no navegador). */
@@ -123,8 +215,9 @@ async function historicoGeral({ dataInicio, dataFim } = {}) {
          FROM registro_ponto r
          JOIN funcionarios f ON r.funcionario_id = f.id
          ${where}
-         ORDER BY r.data_hora_iso ASC`,
-        params
+         ORDER BY r.data_hora_iso DESC
+         LIMIT ?`,
+        [...params, LIMITE_HISTORICO_GERAL]
     );
 }
 
@@ -266,6 +359,9 @@ async function pendenciasDoDia() {
 module.exports = {
     registrarPonto,
     ajustarPontoManual,
+    listarPontosDoDia,
+    editarPonto,
+    removerPonto,
     historicoIndividual,
     historicoGeral,
     pendenciasDoDia

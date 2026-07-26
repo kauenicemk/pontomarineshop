@@ -1,5 +1,6 @@
 import { api } from '../api.js';
 import { escapeHtml } from '../utils.js';
+import { renderizarResumoDashboard } from './pendencias.js';
 
 /** Card clicável — leva direto pra aba onde o administrador vê os detalhes. */
 function cartao(valor, rotulo, cor, abaDestino) {
@@ -50,4 +51,8 @@ export async function carregarDashboard() {
             document.dispatchEvent(new CustomEvent('navegar-admin', { detail: card.dataset.abaDestino }));
         });
     });
+
+    // As listas "em expediente" e "não bateram ponto" vêm na MESMA resposta —
+    // não é preciso uma segunda chamada à API para montá-las.
+    if (r.pendencias) renderizarResumoDashboard(r.pendencias);
 }

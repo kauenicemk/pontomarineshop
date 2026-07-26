@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 
 export async function carregarFeriados() {
     const tbody = document.getElementById('lista-feriados');
@@ -21,7 +20,7 @@ export async function carregarFeriados() {
     tbody.querySelectorAll('.btn-remover-feriado').forEach((btn) => {
         btn.addEventListener('click', async () => {
             try {
-                await comAutorizacao(() => api.removerFeriado(btn.dataset.id));
+                await api.removerFeriado(btn.dataset.id);
                 toast('Feriado removido.', 'sucesso');
                 carregarFeriados();
             } catch (e) {
@@ -42,7 +41,7 @@ export async function salvarNovoFeriado() {
     }
 
     try {
-        await comAutorizacao(() => api.criarFeriado({ data, nome, abrangencia }));
+        await api.criarFeriado({ data, nome, abrangencia });
         toast('Feriado cadastrado com sucesso!', 'sucesso');
         document.getElementById('feriado-nome').value = '';
         carregarFeriados();

@@ -19,7 +19,31 @@ const { comContexto } = require('./utils/contextoRequisicao');
 
 const app = new Hono();
 
-app.use(secureHeaders({ contentSecurityPolicy: false }));
+/**
+ * Content-Security-Policy ativa: se algum dado escapar do escapeHtml e virar HTML,
+ * o navegador ainda recusa executar script injetado.
+ *
+ * - scriptSrc 'self': todo JS vem do próprio domínio (o face-api é local, nunca CDN).
+ *   Não há 'unsafe-inline' aqui de propósito — é o que dá valor à regra.
+ * - styleSrc aceita inline porque os módulos usam style="..." nos elementos que geram;
+ *   injeção de CSS tem risco muito menor que injeção de script.
+ * - mediaSrc/imgSrc com blob: e data: por causa da câmera do reconhecimento facial.
+ */
+app.use(secureHeaders({
+    contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        mediaSrc: ["'self'", 'blob:'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"]
+    }
+}));
 
 // Abre um contexto por requisição. O objeto é preenchido pelo adminAuth quando a
 // rota exige login — é ele que leva "quem fez" até o log de auditoria.
@@ -37,6 +61,7 @@ app.use('*', async (c, next) => {
 //  impedia o RH de corrigir vários pontos em sequência.)
 app.use('/api/auth/totem/login', limiteAutenticacao);
 app.use('/api/auth/admin/login', limiteAutenticacao);
+app.use('/api/funcionarios/*/verificar-pin', limiteAutenticacao);
 app.use('/api/*', limiteGeral);
 
 // Servir arquivos estáticos (public/) e o roteamento de "/" ficam a cargo do Cloudflare

@@ -9,6 +9,9 @@ node_modules/
 data/
 .wrangler/
 
+# Backups do banco — contêm dados pessoais, nunca versionar
+backups/
+
 # Certificados HTTPS locais
 ssl/
 

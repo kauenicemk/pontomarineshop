@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import db from '../src/db/db.js';
 import app from '../src/app.js';
+import { comCabecalhosSeguranca } from '../src/utils/cabecalhosSeguranca.js';
 
 let inicializado = false;
 
@@ -38,9 +39,9 @@ export default {
             // mantém como rede de segurança). Serve o index.html, e o main.js decide o que
             // mostrar olhando pra window.location.pathname.
             if (resposta.status === 404) {
-                return env.ASSETS.fetch(new URL('/', request.url));
+                return comCabecalhosSeguranca(await env.ASSETS.fetch(new URL('/', request.url)));
             }
-            return resposta;
+            return comCabecalhosSeguranca(resposta);
         }
 
         db.setD1(env.DB);

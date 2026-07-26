@@ -19,6 +19,9 @@ function errorHandler(err, c) {
         if (texto.includes('funcionarios.emoji')) message = 'Esse emoji já está em uso por outro funcionário. Escolha outro.';
         else if (texto.includes('admins.email')) message = 'Já existe uma conta de administrador com esse e-mail.';
         else if (texto.includes('feriados.data')) message = 'Já existe um feriado cadastrado nessa data.';
+        else if (texto.includes('registro_ponto') || texto.includes('idx_registro_unico')) {
+            message = 'Já existe uma batida desse tipo nesse dia para este funcionário. Corrija o horário da batida existente em vez de lançar outra.';
+        }
         return c.json({ message }, 409);
     }
 

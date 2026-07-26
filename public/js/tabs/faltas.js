@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, primeiroNome, mesAtualISO } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
 import { mapaDeTurnos, ROTULOS_TURNO } from '../turno.js';
 
@@ -62,7 +61,7 @@ export async function carregarFaltas() {
 
     let resultado;
     try {
-        [resultado] = await Promise.all([comAutorizacao(() => api.calcularFaltas(inicio, fim)), garantirTurnos()]);
+        [resultado] = await Promise.all([api.calcularFaltas(inicio, fim), garantirTurnos()]);
     } catch (e) {
         tbody.innerHTML = e.message === 'cancelado' ? '' : `<tr><td colspan="5" style="color:var(--vermelho)">${escapeHtml(e.message)}</td></tr>`;
         return;
@@ -219,7 +218,7 @@ export async function confirmarJustificativa() {
         const funcionario_id = document.getElementById('justificar-funcionario-id').value;
         const data = document.getElementById('justificar-data').value;
         try {
-            await comAutorizacao(() => api.justificarAusencia({ funcionario_id, data, tipo, justificativa }));
+            await api.justificarAusencia({ funcionario_id, data, tipo, justificativa });
             toast('Ausência justificada.', 'sucesso');
             modal.style.display = 'none';
             carregarFaltas();
@@ -244,7 +243,7 @@ export async function confirmarJustificativa() {
     btn.disabled = true;
     try {
         const itens = selecionadas.map((f) => ({ funcionario_id: f.funcionario_id, data: f.data }));
-        const resp = await comAutorizacao(() => api.justificarAusenciasEmLote({ itens, tipo, justificativa }));
+        const resp = await api.justificarAusenciasEmLote({ itens, tipo, justificativa });
         toast(resp.message, 'sucesso');
         modal.style.display = 'none';
         carregarFaltas();

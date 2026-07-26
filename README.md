@@ -1,27 +1,53 @@
 # Ponto Marine Shop
 
-Sistema de controle de ponto: uso presencial/supervisionado, sem login individual, com toda
-ação administrativa protegida por uma senha de responsável verificada no backend.
+Sistema de controle de ponto da Marine Shop. Roda em Cloudflare Workers com banco D1.
+Duas experiências separadas: o **totem** (tablet fixo na loja, onde o ponto é batido) e o
+**painel administrativo** (acessível de qualquer lugar, com login individual por administrador).
 
 ---
 
 ## 1. Como rodar
 
 ```bash
-cp .env.example .env        # ajuste o PIN administrativo inicial se quiser
 npm install
-npm start                   # sobe em http://localhost:3000
+cp .dev.vars.example .dev.vars   # preencha JWT_SECRET e as senhas iniciais
+npm run migrate:local            # cria as tabelas no banco local
+npm run dev                      # sobe em http://localhost:8787
 ```
 
-Na primeira execução, o servidor cria o banco em `data/ponto.db` (fora da pasta pública) e
-configura o PIN administrativo inicial definido em `ADMIN_PIN_INICIAL` no `.env` (padrão: `1234`
-— **troque isso na aba Administração → Administração Geral assim que possível**).
+O sistema **não roda com `node server.js`** — o banco é o Cloudflare D1, que só existe dentro
+do Worker. Sempre use `npm run dev` (wrangler).
 
-Não há nenhum funcionário cadastrado por padrão. Cadastre a equipe pela aba
-**Administração → Administração Geral**, ou rode um seed fictício só para testar localmente:
+### Publicar
 
 ```bash
-npm run seed:demo   # cria 10-12 funcionários fictícios com ~30 dias de histórico aleatório
+npm run backup     # exporta o banco de produção antes de qualquer mudança
+npm run migrate    # aplica as migrações pendentes no banco de produção
+npm run deploy
+```
+
+### Segredos (obrigatórios em produção)
+
+```bash
+npx wrangler secret put JWT_SECRET             # valor longo e aleatório
+npx wrangler secret put ADMIN_EMAIL_INICIAL
+npx wrangler secret put ADMIN_SENHA_INICIAL
+npx wrangler secret put TOTEM_SENHA_INICIAL
+```
+
+Sem `JWT_SECRET` nenhum login funciona. As duas senhas iniciais só valem no primeiro acesso —
+troque-as pelo painel logo em seguida.
+
+### Backup
+
+`npm run backup` gera um `.sql` completo em `backups/` (pasta fora do Git, contém dados
+pessoais). Rode antes de migrações, antes de usar a "Zona de perigo" e periodicamente.
+Para restaurar: `npx wrangler d1 execute <banco> --remote --file=backups/<arquivo>.sql`.
+
+### Testes
+
+```bash
+npm test    # regras de cálculo: atraso, tolerância, horas extras, adicional noturno, saldo
 ```
 
 ## 2. Navegação — totem e painel administrativo são duas experiências separadas
@@ -66,7 +92,7 @@ Tecnicamente, isso é a tabela `jornada_funcionario` (até 6 linhas por funcion�
 se for domingo).
 
 Quem já tinha configurado jornada no formato antigo (3 grupos: Segunda-Quinta/Sexta/Sábado) não
-perde nada — a migração automática (`src/db/migrate.js`) expande isso pros 6 dias sozinha na
+perde nada — a migração do D1 expande isso pros 6 dias sozinha na
 próxima vez que o servidor subir, preservando os valores.
 
 ## 3.1. Adicional noturno e hora extra simplificada
@@ -214,7 +240,7 @@ npm run setup:https
 ```
 
 Isso gera `ssl/cert.pem` e `ssl/key.pem`, válidos para `localhost` e para o(s) IP(s) da rede
-local do computador. Reinicie o servidor (`npm start`) — ele detecta os arquivos automaticamente
+local do computador. Reinicie o servidor (`npm run dev`) — ele detecta os arquivos automaticamente
 e sobe em HTTPS. O terminal mostra os endereços disponíveis, algo como:
 
 ```
@@ -331,20 +357,13 @@ só mostrar registro cru:
 - **Headcount** por regime (CLT/Estagiário/PJ) e por departamento (campo opcional cadastrado em
   Configurar Horários).
 
-## 13. Seed de demonstração (dados de teste)
+## 13. Dados de teste
 
-```bash
-npm run seed:demo
-```
-
-Cria de 10 a 12 funcionários fictícios (nomes e emojis aleatórios, misturando CLT/Estagiário/PJ,
-alguns trabalhando sábado e outros não) mais um funcionário de exemplo com turno tarde/noite
-(pra ver o adicional noturno em ação), e gera **~30 dias de histórico de ponto aleatório** pra
-cada um — incluindo atrasos ocasionais, horas extras ocasionais, faltas não justificadas e
-ausências justificadas espalhadas pelo mês, além de um feriado de exemplo. Cada vez que você
-apaga o banco e roda de novo, os dados saem diferentes (por isso "voláteis") — é só pra testar o
-sistema com volume de dados real, nunca use em produção. Só roda se o banco estiver vazio (não
-sobrescreve dados reais).
+Não há seed automático — o script antigo dependia do caminho local com SQLite, que não existe
+mais. Para testar, cadastre alguns funcionários pelo painel e, quando terminar, use a
+**Zona de perigo** (Administração Geral) para apagar tudo de uma vez: ela remove funcionários,
+pontos, jornadas, ausências, férias e biometria, preservando suas contas de administrador,
+a senha do totem, feriados e o log de auditoria.
 
 ## 14. Sobre não ter migrado para Vite/React
 
@@ -375,46 +394,54 @@ próxima etapa, com testes incrementais a cada parte.
 ## 16. Estrutura de pastas
 
 ```
-server.js                     # ponto de entrada
+public/_worker.js             # ponto de entrada no Cloudflare (assets + API + bootstrap inicial)
+migrations/                   # migrações do D1 (aplicar com: npm run migrate)
 scripts/
+  backup.js                    # exporta o banco de produção (npm run backup)
   instalar-biometria.js        # baixa face-api.js + modelos (npm run setup:biometria)
-  gerar-https.js               # gera certificado local (npm run setup:https)
 src/
-  app.js                      # wiring do Express (helmet, rate limit, rotas, static)
-  config.js                   # variáveis de ambiente e valores padrão de jornada/biometria
-  db/
-    db.js                     # wrapper promisificado do sqlite3
-    migrate.js                # criação de tabelas + migrações de compatibilidade
-    seedDemo.js                # dados fictícios opcionais para teste local
+  app.js                      # wiring do Hono (CSP, rate limit, contexto de auditoria, rotas)
+  config.js                   # valores padrão de jornada, horas extras, tolerância e biometria
+  db/db.js                    # wrapper do Cloudflare D1 (mesma assinatura run/get/all/exec)
   middleware/
-    adminAuth.js               # confere a senha de responsável (bcrypt)
+    adminAuth.js               # valida o JWT do administrador e identifica o autor da ação
+    totemAuth.js               # valida o token do tablet
     rateLimiters.js
     errorHandler.js
   routes/                     # uma rota por recurso, fina, delega para services/
   services/
     funcionarios.service.js    # CRUD, jornada (6 dias), regime, demissão, dados cadastrais
     biometria.service.js       # cadastro de amostras faciais + reconhecimento (server-side)
-    ponto.service.js           # bater ponto, histórico, ajuste manual, pendências
+    ponto.service.js           # bater ponto, corrigir/apagar batida, histórico, pendências
     calculoJornada.service.js  # funções puras: tempo, atraso, extras, noturno, valor R$, interjornada
     relatorio.service.js       # relatório geral + relatório individual agregado
-    ferias.service.js          # período aquisitivo, dias de direito (Art. 130 CLT), gozo
+    dashboard.service.js       # resumo do dia + situação do time numa única resposta
+    ferias.service.js          # períodos de férias e status (ativa/futura/encerrada)
     espelho.service.js         # confirmação digital do espelho de ponto mensal
     analytics.service.js       # indicadores agregados (absenteísmo, custo, atrasos, headcount)
     feriados.service.js
-    ausencias.service.js       # cálculo de faltas ciente da jornada de cada um
+    ausencias.service.js       # faltas cientes da jornada + justificativa em massa
   utils/
     tempo.js                   # conversões de hora/data, grupoDoDia() (6 dias), janela noturna
-    validacao.js                # validadores manuais de entrada (inclui descritor facial)
-    auditoria.js                # log de ações administrativas
+    validacao.js               # validadores manuais de entrada (inclui descritor facial)
+    auditoria.js               # log de ações administrativas, com o autor de cada uma
+    contextoRequisicao.js      # leva o admin logado até o log, isolado por requisição
+    jwtAuth.js                 # assinatura e verificação dos tokens
+    cabecalhosSeguranca.js     # CSP e demais cabeçalhos aplicados às páginas
+tests/                        # testes das regras de cálculo (npm test)
 public/
   index.html
   css/styles.css
-  vendor/face-api/            # lib + modelos de reconhecimento facial (baixados via setup:biometria)
+  img/                        # logo da Marine Shop (ver LEIA-ME.txt)
+  vendor/face-api/            # lib + modelos de reconhecimento facial (npm run setup:biometria)
   js/
-    main.js                    # bootstrap e navegação (principal + sub-abas)
-    api.js                      # camada única de acesso à API
-    adminGate.js                 # controla a senha de responsável no navegador
-    faceRecognition.js           # wrapper do face-api.js (descritor + caixa de detecção)
+    main.js                    # bootstrap e navegação (totem e painel)
+    api.js                     # camada única de acesso à API
+    brand.js                   # nome e logo do sistema — único lugar para trocar
+    pin.js                     # PIN pessoal do funcionário no totem
+    turno.js                   # turno derivado do horário de entrada
+    confirmar.js               # modal de confirmação
+    faceRecognition.js         # wrapper do face-api.js (descritor + caixa de detecção)
     toast.js
     utils.js
     tabs/                       # um módulo por aba/sub-aba, inclui:

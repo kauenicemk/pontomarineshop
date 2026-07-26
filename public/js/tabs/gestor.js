@@ -1,7 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../toast.js';
 import { escapeHtml, primeiroNome } from '../utils.js';
-import { comAutorizacao } from '../adminGate.js';
 
 let cacheRelatorioGestor = [];
 
@@ -16,7 +15,7 @@ export async function carregarGavetasGerais() {
     espaco.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
 
     try {
-        const dados = await comAutorizacao(() => api.historicoGeral());
+        const dados = await api.historicoGeral();
         const agrupadosPorDia = {};
         dados.forEach((d) => {
             if (!agrupadosPorDia[d.data]) agrupadosPorDia[d.data] = {};
@@ -63,7 +62,7 @@ export async function renderizarRelatorioGestor() {
     const fim = document.getElementById('filtro-fim').value;
 
     try {
-        cacheRelatorioGestor = await comAutorizacao(() => api.relatorioCalculado(inicio, fim));
+        cacheRelatorioGestor = await api.relatorioCalculado(inicio, fim);
     } catch (e) {
         if (e.message !== 'cancelado') toast(e.message, 'erro');
         return;
@@ -95,28 +94,8 @@ export async function renderizarRelatorioGestor() {
     });
 }
 
-export async function salvarAjusteManual() {
-    const funcionario_id = document.getElementById('select-f-ajuste').value;
-    const data = document.getElementById('ajuste-data').value;
-    const hora = document.getElementById('ajuste-hora').value;
-    const tipo = document.getElementById('ajuste-tipo').value;
-    const justificativa = document.getElementById('ajuste-justificativa').value;
-
-    if (!funcionario_id || !data || !hora || !justificativa) {
-        toast('Preencha todos os campos do ajuste!', 'erro');
-        return;
-    }
-
-    try {
-        const resp = await comAutorizacao(() => api.ajustarPonto({ funcionario_id, data, hora, tipo, justificativa }));
-        toast(resp.message, 'sucesso');
-        document.getElementById('ajuste-justificativa').value = '';
-        carregarGavetasGerais();
-        renderizarRelatorioGestor();
-    } catch (e) {
-        if (e.message !== 'cancelado') toast(e.message, 'erro');
-    }
-}
+// O lançamento manual de ponto agora mora em tabs/editorPontos.js, junto com a
+// correção e a exclusão de batidas — antes só era possível INSERIR, nunca corrigir.
 
 export function exportarPlanilhaParaExcel() {
     if (cacheRelatorioGestor.length === 0) {

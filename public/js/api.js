@@ -76,9 +76,13 @@ export const api = {
     baterPonto: (funcionario_id, tipo) => chamar('/api/ponto', { method: 'POST', body: { funcionario_id, tipo }, totem: true }),
     reconhecerRosto: (descritor) => chamar('/api/reconhecer-rosto', { method: 'POST', body: { descritor }, totem: true }),
     meuHistorico: (id) => chamar(`/api/meu-historico/${id}`, { totem: true }),
+    verificarPin: (id, pin) => chamar(`/api/funcionarios/${id}/verificar-pin`, { method: 'POST', body: { pin }, totem: true }),
 
     // Ponto (admin)
     ajustarPonto: (dados) => chamar('/api/ajuste-ponto', { method: 'POST', body: dados, admin: true }),
+    pontosDoDia: (funcionarioId, data) => chamar(`/api/pontos-do-dia?${new URLSearchParams({ funcionario_id: funcionarioId, data })}`, { admin: true }),
+    editarPonto: (id, dados) => chamar(`/api/ponto/${id}`, { method: 'PUT', body: dados, admin: true }),
+    removerPonto: (id, justificativa) => chamar(`/api/ponto/${id}`, { method: 'DELETE', body: { justificativa }, admin: true }),
     historicoGeral: (inicio, fim) => chamar(`/api/historico-geral?${new URLSearchParams({ inicio: inicio || '', fim: fim || '' })}`, { admin: true }),
     pendencias: () => chamar('/api/pendencias', { admin: true }),
     resumoDoDia: () => chamar('/api/dashboard-resumo', { admin: true }),

@@ -96,6 +96,7 @@ export const api = {
     // Ausências / faltas
     calcularFaltas: (inicio, fim) => chamar(`/api/ausencias/faltas?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
     justificarAusencia: (dados) => chamar('/api/ausencias', { method: 'POST', body: dados, admin: true }),
+    justificarAusenciasEmLote: (dados) => chamar('/api/ausencias/lote', { method: 'POST', body: dados, admin: true }),
 
     // Administração geral
     zerarDados: (confirmacao) => chamar('/api/admin/zerar-dados', { method: 'POST', body: { confirmacao }, admin: true }),

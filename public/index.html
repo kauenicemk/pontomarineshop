@@ -387,12 +387,41 @@
             <div class="card">
                 <div class="filtros">
                     <label>Mês <input type="month" id="faltas-mes"></label>
+                    <label>Turno
+                        <select id="faltas-turno">
+                            <option value="">Todos os turnos</option>
+                            <option value="manha">Manhã</option>
+                            <option value="tarde">Tarde</option>
+                            <option value="noite">Noite</option>
+                        </select>
+                    </label>
                     <button class="btn btn-principal" id="btn-filtrar-faltas" style="margin:0;">Calcular Faltas</button>
                 </div>
+
+                <div class="barra-lote escondido" id="faltas-barra-lote">
+                    <label class="label-checkbox">
+                        <input type="checkbox" id="faltas-selecionar-todos">
+                        <b>Selecionar todas</b>
+                    </label>
+                    <span class="contador-selecao" id="faltas-contador">Nenhuma falta selecionada</span>
+                    <button class="btn btn-principal" id="btn-justificar-lote" style="margin:0;" disabled>Justificar selecionadas</button>
+                </div>
+
                 <div class="tabela-wrap">
                     <table>
-                        <thead><tr><th>Colaborador</th><th>Data</th><th>Situação</th><th></th></tr></thead>
+                        <thead><tr><th style="width:34px;"></th><th>Colaborador</th><th>Data</th><th>Situação</th><th></th></tr></thead>
                         <tbody id="lista-faltas"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Ausências justificadas no período</h2>
+                <p class="nota-rodape" style="margin:0 0 12px;">Registro do que já foi justificado — tipo, observação e a quem se aplica.</p>
+                <div class="tabela-wrap">
+                    <table>
+                        <thead><tr><th>Colaborador</th><th>Data</th><th>Tipo</th><th>Observação</th></tr></thead>
+                        <tbody id="lista-ausencias-justificadas"></tbody>
                     </table>
                 </div>
             </div>
@@ -438,6 +467,17 @@
             </div>
             <div class="card">
                 <h2>Funcionários</h2>
+                <div class="filtros">
+                    <label>Buscar <input type="text" class="campo" id="config-busca" placeholder="Nome do colaborador" autocomplete="off" style="width:200px;"></label>
+                    <label>Turno
+                        <select id="config-turno">
+                            <option value="">Todos os turnos</option>
+                            <option value="manha">Manhã</option>
+                            <option value="tarde">Tarde</option>
+                            <option value="noite">Noite</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="lista-config-horarios"></div>
             </div>
         </section>
@@ -571,9 +611,10 @@
 </div>
 
 <div class="modal-overlay" id="modalJustificarAusencia">
-    <div class="modal-box">
-        <h3>Justificar Ausência</h3>
+    <div class="modal-box modal-box-justificar">
+        <h3 id="justificar-titulo">Justificar Ausência</h3>
         <p id="justificar-texto-info" class="nota-rodape"></p>
+        <div class="lista-revisao escondido" id="justificar-revisao"></div>
         <input type="hidden" id="justificar-funcionario-id">
         <input type="hidden" id="justificar-data">
         <select id="justificar-tipo" class="campo" style="margin-bottom:8px;">

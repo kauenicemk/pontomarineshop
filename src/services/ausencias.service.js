@@ -16,6 +16,37 @@ async function justificar({ funcionario_id, data, tipo, justificativa }) {
     return db.get(`SELECT * FROM ausencias WHERE funcionario_id = ? AND data = ?`, [funcionario_id, data]);
 }
 
+/**
+ * Justifica VÁRIAS ausências de uma vez (vários funcionários e/ou várias datas).
+ * Usa o mesmo upsert do fluxo individual: rodar duas vezes com os mesmos itens
+ * atualiza a justificativa em vez de criar registros duplicados.
+ * Devolve quantos foram criados e quantos já existiam (foram atualizados).
+ */
+async function justificarEmLote(itens, { tipo, justificativa }) {
+    const chavesExistentes = new Set();
+    for (const item of itens) {
+        const ja = await db.get(
+            `SELECT id FROM ausencias WHERE funcionario_id = ? AND data = ?`,
+            [item.funcionario_id, item.data]
+        );
+        if (ja) chavesExistentes.add(`${item.funcionario_id}_${item.data}`);
+    }
+
+    for (const item of itens) {
+        await db.run(
+            `INSERT INTO ausencias (funcionario_id, data, tipo, justificativa)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(funcionario_id, data) DO UPDATE SET tipo = excluded.tipo, justificativa = excluded.justificativa`,
+            [item.funcionario_id, item.data, tipo, justificativa || null]
+        );
+    }
+
+    const atualizados = chavesExistentes.size;
+    const criados = itens.length - atualizados;
+    await registrarAuditoria('justificar_ausencia_lote', 'ausencia', null, { total: itens.length, criados, atualizados, tipo, justificativa });
+    return { total: itens.length, criados, atualizados };
+}
+
 async function remover(id) {
     await db.run(`DELETE FROM ausencias WHERE id = ?`, [id]);
     await registrarAuditoria('remover_ausencia', 'ausencia', id, {});
@@ -58,7 +89,12 @@ async function calcularFaltas({ dataInicio, dataFim }) {
     const [funcionarios, feriadosSet, justificadas, entradasRegistradas, jornadasPorFuncionario] = await Promise.all([
         db.all(`SELECT id, emoji, nome, regime FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`),
         feriadosService.buscarComoConjunto({ dataInicio, dataFim }),
-        db.all(`SELECT funcionario_id, data, tipo, justificativa FROM ausencias WHERE data BETWEEN ? AND ?`, [dataInicio, dataFim]),
+        db.all(
+            `SELECT a.id, a.funcionario_id, a.data, a.tipo, a.justificativa, f.nome, f.emoji
+             FROM ausencias a JOIN funcionarios f ON f.id = a.funcionario_id
+             WHERE a.data BETWEEN ? AND ? ORDER BY a.data DESC, f.nome ASC`,
+            [dataInicio, dataFim]
+        ),
         db.all(
             `SELECT DISTINCT funcionario_id, data FROM registro_ponto WHERE tipo = 'Entrada' AND data BETWEEN ? AND ?`,
             [dataInicio, dataFim]
@@ -98,4 +134,4 @@ async function calcularFaltas({ dataInicio, dataFim }) {
     return { faltas, ausenciasJustificadas: justificadas, totalDiasUteisNoPeriodo: totalDiasDeTrabalhoNoPeriodo };
 }
 
-module.exports = { justificar, remover, calcularFaltas };
+module.exports = { justificar, justificarEmLote, remover, calcularFaltas };

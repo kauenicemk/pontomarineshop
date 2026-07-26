@@ -166,7 +166,7 @@ function carregarConteudoAdminAba(nomeAba) {
     if (nomeAba === 'ferias') ferias.carregarFerias();
     if (nomeAba === 'indicadores') analytics.carregarIndicadores();
     if (nomeAba === 'feriados') feriados.carregarFeriados();
-    if (nomeAba === 'faltas') faltas.carregarFaltas();
+    if (nomeAba === 'faltas') { faltas.iniciarAcoesEmLote(); faltas.carregarFaltas(); }
     if (nomeAba === 'admin-geral') { admin.carregarConfigHorasExtras(); admin.carregarListaAdmins(); admin.iniciarZonaDePerigo(); }
     if (nomeAba === 'biometria') biometria.renderizarAbaBiometria();
 }

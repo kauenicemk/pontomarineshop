@@ -1,24 +1,28 @@
 /**
  * Identidade do sistema — ÚNICO lugar para trocar nome e logo.
  *
- * Para usar a logo oficial da Marine Shop, basta salvar o arquivo em
- * public/img/logo-marine-shop.png (qualquer proporção funciona — a imagem é
- * encaixada com object-fit: contain). Enquanto o arquivo não existir, o
- * sistema mostra automaticamente um monograma "MS" como placeholder.
+ * Arquivos em public/img/:
+ *   logo-marine-shop.png          → logo oficial (cinza + laranja), para fundos claros
+ *   logo-marine-shop-dark.png     → mesma logo com o cinza clareado, usada na interface
+ *                                   escura (o cinza original desaparece sobre fundo escuro)
+ *   logo-marine-shop-original.png → cópia intacta do arquivo enviado, só para referência
+ *
+ * Para trocar a logo, substitua o arquivo apontado por `logoUrl` — o componente exibe
+ * a imagem inteira (object-fit: contain), sem corte nem distorção, qualquer proporção.
  */
 export const BRAND = {
     nome: 'Ponto Marine Shop',
     empresa: 'Marine Shop',
-    logoUrl: 'img/logo-marine-shop.png',
+    logoUrl: 'img/logo-marine-shop-dark.png',
     monograma: 'MS'
 };
 
 /**
  * Preenche todos os elementos com [data-logo] com a marca (logo + nome).
  * Variações:
- *   data-logo            → logo + nome completo
- *   data-logo="grande"   → versão maior (telas de login)
- *   data-logo="so-logo"  → só o símbolo, sem texto
+ *   data-logo            → logo + nome, lado a lado (cabeçalhos)
+ *   data-logo="grande"   → versão empilhada e maior (telas de login)
+ *   data-logo="so-logo"  → só a imagem, sem texto
  */
 export function montarLogos() {
     document.querySelectorAll('[data-logo]').forEach((slot) => {

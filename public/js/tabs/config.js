@@ -3,6 +3,7 @@ import { toast } from '../toast.js';
 import { escapeHtml, paraMinutos, minutosParaHoras } from '../utils.js';
 import { comAutorizacao } from '../adminGate.js';
 import { confirmar } from '../confirmar.js';
+import { turnoDaJornada, ROTULOS_TURNO } from '../turno.js';
 
 const ROTULOS_REGIME = { CLT: 'CLT', ESTAGIARIO: 'Estagiário', PJ: 'PJ' };
 const GRUPOS = [
@@ -46,13 +47,14 @@ export async function renderizarAbaConfig() {
     }
 
     container.innerHTML = funcionarios.map((f) => `
-        <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}">
+        <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}" data-turno="${turnoDaJornada(f.jornada) || ''}">
             <button type="button" class="config-gaveta-header" aria-expanded="false">
                 <span class="config-gaveta-titulo">
                     <b>${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</b>
                     ${f.ativo ? '' : ' <span class="badge-desligado">Desligado</span>'}
                 </span>
                 <span class="config-gaveta-meta">
+                    ${turnoDaJornada(f.jornada) ? `<span class="badge-turno">${escapeHtml(ROTULOS_TURNO[turnoDaJornada(f.jornada)])}</span>` : ''}
                     ${escapeHtml(ROTULOS_REGIME[f.regime] || f.regime)}
                     <svg class="icone-svg config-gaveta-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
@@ -107,6 +109,9 @@ export async function renderizarAbaConfig() {
     `).join('');
 
     // Gavetas: cada funcionário abre/fecha ao tocar no cabeçalho (fechadas por padrão).
+    iniciarFiltros();
+    aplicarFiltros();
+
     container.querySelectorAll('.config-gaveta-header').forEach((header) => {
         header.addEventListener('click', () => {
             const corpo = header.nextElementSibling;
@@ -132,6 +137,41 @@ export async function renderizarAbaConfig() {
     container.querySelectorAll('.btn-copiar-jornada').forEach((btn) => {
         btn.addEventListener('click', (ev) => copiarSegundaParaOutrosDias(ev.target.closest('.config-row-funcionario')));
     });
+}
+
+/* ===================== Filtros da lista (busca + turno) ===================== */
+
+function iniciarFiltros() {
+    const busca = document.getElementById('config-busca');
+    const turno = document.getElementById('config-turno');
+    if (!busca || busca.dataset.iniciado) return;
+    busca.dataset.iniciado = '1';
+    busca.addEventListener('input', aplicarFiltros);
+    turno?.addEventListener('change', aplicarFiltros);
+}
+
+function aplicarFiltros() {
+    const termo = (document.getElementById('config-busca')?.value || '').trim().toLowerCase();
+    const turno = document.getElementById('config-turno')?.value || '';
+    const container = document.getElementById('lista-config-horarios');
+    let visiveis = 0;
+
+    container.querySelectorAll('.config-row-funcionario').forEach((linha) => {
+        const nome = (linha.querySelector('.config-gaveta-titulo b')?.textContent || '').toLowerCase();
+        const combina = (!termo || nome.includes(termo)) && (!turno || linha.dataset.turno === turno);
+        linha.classList.toggle('escondido', !combina);
+        if (combina) visiveis += 1;
+    });
+
+    let vazio = container.querySelector('.filtro-sem-resultado');
+    if (visiveis === 0 && !vazio) {
+        vazio = document.createElement('p');
+        vazio.className = 'texto-vazio filtro-sem-resultado';
+        vazio.textContent = 'Nenhum colaborador corresponde ao filtro.';
+        container.appendChild(vazio);
+    } else if (vazio && visiveis > 0) {
+        vazio.remove();
+    }
 }
 
 /** Copia entrada/carga/trabalha da segunda-feira para terça, quarta, quinta e sexta — sábado fica de fora de propósito. */

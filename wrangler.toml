@@ -9,7 +9,7 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 
 [[d1_databases]]
-binding = "DB"
+binding = "DB"wrangler d1 migrations apply
 database_name = "ponto-gaveta-pro-db"
 database_id = "e68095cf-365f-4896-a4d6-46230e86b4d7"
 

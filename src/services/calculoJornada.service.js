@@ -245,6 +245,7 @@ function montarRelatorioDia({ funcionario, dataISO, pontos, justificativas, ehFe
         pontos,
         justificativas,
         tempo_trabalhado: minutosParaStr(totalMinutos),
+        trabalhadoMinutos: totalMinutos,
         atraso: minutosParaStr(atrasoTotal),
         atrasoMinutos: atrasoTotal,
         ehFeriado: !!ehFeriado,

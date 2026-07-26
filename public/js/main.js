@@ -186,7 +186,7 @@ function carregarConteudoAdminAba(nomeAba) {
         pendencias.carregarPendencias();
         intervaloPendencias = setInterval(() => pendencias.carregarPendencias(), 30000);
     }
-    if (nomeAba === 'banco-horas') bancoHoras.renderizarGraficoBanco();
+    if (nomeAba === 'banco-horas') { bancoHoras.iniciarBancoHoras(); bancoHoras.renderizarGraficoBanco(); }
     if (nomeAba === 'individual') relatorioIndividual.carregarRelatorioIndividual();
     if (nomeAba === 'ferias') ferias.carregarFerias();
     if (nomeAba === 'indicadores') analytics.carregarIndicadores();

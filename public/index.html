@@ -293,16 +293,16 @@
 
         <!-- ---------- Pendências ---------- -->
         <section id="admin-pendencias" class="admin-tela">
-            <h1 class="admin-secao-titulo">Pendências</h1>
-            <p class="admin-secao-subtitulo">Situação de cada colaborador neste momento</p>
-            <div class="card">
-                <h2><span class="ponto-status verde" aria-hidden="true"></span>Em expediente agora</h2>
-                <div id="lista-presentes-agora-sub"></div>
+            <div class="cabecalho-pendencias">
+                <div>
+                    <h1 class="admin-secao-titulo">Pendências</h1>
+                    <p class="admin-secao-subtitulo" id="pendencias-subtitulo">Situação de cada colaborador neste momento</p>
+                </div>
+                <div class="pendencias-relogio" id="pendencias-relogio" title="Horário de Brasília">--:--</div>
             </div>
-            <div class="card">
-                <h2><span class="ponto-status vermelho" aria-hidden="true"></span>Ainda não bateram ponto hoje</h2>
-                <div id="lista-nao-chegaram-sub"></div>
-            </div>
+
+            <div class="resumo-pendencias" id="pendencias-resumo"></div>
+            <div id="pendencias-conteudo"></div>
         </section>
 
         <!-- ---------- Banco de Horas ---------- -->

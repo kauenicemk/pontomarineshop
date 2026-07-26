@@ -2,6 +2,11 @@ const db = require('../db/db');
 const { agoraBrasilia, paraMinutos, grupoDoDia } = require('../utils/tempo');
 const { registrarAuditoria } = require('../utils/auditoria');
 
+// Minutos de carência antes de alguém que não bateu ponto ser destacado como ATRASADO
+// na tela de Pendências. É só a régua do alerta visual — não interfere no cálculo de
+// atraso do relatório (esse usa a regra da CLT/config, com a tolerância de 10 minutos).
+const TOLERANCIA_ATRASO_PENDENCIA_MIN = 10;
+
 /**
  * Valida a sequência lógica das batidas do dia ANTES de gravar — impede registro duplicado
  * (duas Entradas) e fora de ordem (Retorno sem Saída Almoço, Saída Final sem Entrada...).
@@ -123,13 +128,22 @@ async function historicoGeral({ dataInicio, dataFim } = {}) {
     );
 }
 
-/** Quem está presente agora e quem ainda não bateu ponto hoje. */
+/**
+ * Retrato da situação do time AGORA, usado na tela de Pendências e no dashboard.
+ * Devolve todo mundo classificado, para o gestor bater o olho e entender o dia:
+ *
+ *   presentesAgora  — quem está com expediente aberto (trabalhando ou em intervalo)
+ *   naoChegaram     — deveria ter chegado e ainda não bateu (com os minutos de atraso)
+ *   encerraram      — já bateu a saída final hoje
+ *   ausentesHoje    — tem ausência justificada (férias, atestado, licença, folga)
+ *   semExpediente   — hoje não é dia de trabalho dessa pessoa (folga da escala)
+ */
 async function pendenciasDoDia() {
     const { data: hojeISO } = agoraBrasilia();
-    const agora = new Date();
-    const horaAtualMin = paraMinutos(
-        new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(agora)
-    );
+    const horaAtual = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(new Date());
+    const horaAtualMin = paraMinutos(horaAtual);
 
     const funcionarios = await db.all(
         `SELECT id, emoji, nome FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`
@@ -140,13 +154,14 @@ async function pendenciasDoDia() {
         [hojeISO]
     );
 
-    // Quem tem ausência justificada HOJE (férias, atestado, licença, folga) não pode
-    // aparecer como "ainda não chegou" nem virar "atrasado" no dashboard.
-    const ausentesHoje = await db.all(
-        `SELECT funcionario_id FROM ausencias WHERE data = ?`,
+    // Ausência justificada hoje (férias, atestado, licença, folga) não é pendência —
+    // aparece em uma lista própria, com o motivo.
+    const ausencias = await db.all(
+        `SELECT funcionario_id, tipo, justificativa FROM ausencias WHERE data = ?`,
         [hojeISO]
     );
-    const ausentesSet = new Set(ausentesHoje.map((a) => a.funcionario_id));
+    const ausenciaPorFuncionario = {};
+    ausencias.forEach((a) => { ausenciaPorFuncionario[a.funcionario_id] = a; });
 
     // Jornada configurada para o dia da semana de HOJE (segunda..sábado) de cada funcionário.
     const grupoHoje = grupoDoDia(hojeISO);
@@ -168,30 +183,84 @@ async function pendenciasDoDia() {
 
     const presentesAgora = [];
     const naoChegaram = [];
+    const encerraram = [];
+    const ausentesHoje = [];
+    const semExpediente = [];
 
     funcionarios.forEach((f) => {
-        const p = pontosPorFuncionario[f.id];
+        const p = pontosPorFuncionario[f.id] || {};
+        const cfgHoje = jornadaHojePorFuncionario[f.id];
+        const horarioPrevisto = cfgHoje && cfgHoje.trabalha ? cfgHoje.horario_entrada : null;
+        const base = { funcionario_id: f.id, nome: f.nome, emoji: f.emoji, horario_combinado: horarioPrevisto };
 
-        if (p && p.ENTRADA && !p.SAIDA) {
+        // 1) Expediente aberto: bateu entrada e ainda não bateu a saída final
+        if (p.ENTRADA && !p.SAIDA) {
             let status = 'Trabalhando';
             let desde = p.ENTRADA;
             if (p.ALMOCO_SAIDA && !p.ALMOCO_RETORNO) { status = 'Em Almoço'; desde = p.ALMOCO_SAIDA; }
             else if (p.ALMOCO_RETORNO) { desde = p.ALMOCO_RETORNO; }
-            presentesAgora.push({ nome: f.nome, emoji: f.emoji, status, desde });
+
+            const atrasoEntrada = horarioPrevisto
+                ? Math.max(0, paraMinutos(p.ENTRADA) - paraMinutos(horarioPrevisto))
+                : 0;
+
+            presentesAgora.push({
+                ...base,
+                status,
+                desde,
+                entrada: p.ENTRADA,
+                minutosDesde: Math.max(0, horaAtualMin - paraMinutos(desde)),
+                chegouAtrasado: atrasoEntrada > 0,
+                minutosAtrasoEntrada: atrasoEntrada
+            });
+            return;
         }
 
-        if (!p || !p.ENTRADA) {
-            if (ausentesSet.has(f.id)) return; // ausência justificada hoje (férias, atestado...) — não é pendência
-            const cfgHoje = jornadaHojePorFuncionario[f.id];
-            if (!cfgHoje || !cfgHoje.trabalha) return; // hoje não é dia de trabalho pra essa pessoa (ex: sábado sem expediente)
-            const minCombinado = paraMinutos(cfgHoje.horario_entrada || '08:00');
-            const atrasado = horaAtualMin > minCombinado + 10;
-            naoChegaram.push({ nome: f.nome, emoji: f.emoji, horario_combinado: cfgHoje.horario_entrada, atrasado });
+        // 2) Já encerrou o expediente hoje
+        if (p.ENTRADA && p.SAIDA) {
+            encerraram.push({ ...base, entrada: p.ENTRADA, saida: p.SAIDA });
+            return;
         }
+
+        // 3) Ausência justificada
+        const ausencia = ausenciaPorFuncionario[f.id];
+        if (ausencia) {
+            ausentesHoje.push({ ...base, tipo: ausencia.tipo, justificativa: ausencia.justificativa });
+            return;
+        }
+
+        // 4) Hoje não é dia de trabalho dessa pessoa (folga da escala / domingo)
+        if (!cfgHoje || !cfgHoje.trabalha) {
+            semExpediente.push({ ...base });
+            return;
+        }
+
+        // 5) Deveria ter chegado e ainda não bateu ponto
+        const minCombinado = paraMinutos(horarioPrevisto || '08:00');
+        const minutosAtraso = Math.max(0, horaAtualMin - minCombinado);
+        naoChegaram.push({
+            ...base,
+            atrasado: minutosAtraso > TOLERANCIA_ATRASO_PENDENCIA_MIN,
+            minutosAtraso,
+            minutosParaEntrada: Math.max(0, minCombinado - horaAtualMin)
+        });
     });
 
-    naoChegaram.sort((a, b) => Number(b.atrasado) - Number(a.atrasado));
-    return { presentesAgora, naoChegaram };
+    // Mais atrasados primeiro; entre os que ainda estão no horário, quem entra antes primeiro.
+    naoChegaram.sort((a, b) => b.minutosAtraso - a.minutosAtraso || a.minutosParaEntrada - b.minutosParaEntrada);
+    presentesAgora.sort((a, b) => (a.desde || '').localeCompare(b.desde || ''));
+    encerraram.sort((a, b) => (b.saida || '').localeCompare(a.saida || ''));
+
+    return {
+        horaAtual,
+        data: hojeISO,
+        totalAtivos: funcionarios.length,
+        presentesAgora,
+        naoChegaram,
+        encerraram,
+        ausentesHoje,
+        semExpediente
+    };
 }
 
 module.exports = {

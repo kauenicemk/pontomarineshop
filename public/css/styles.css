@@ -417,6 +417,72 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 .colunas-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 @media (max-width: 800px) { .colunas-dashboard { grid-template-columns: 1fr; } }
 
+/* ===================== Painel de Pendências ===================== */
+
+.cabecalho-pendencias { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pendencias-relogio {
+    font-family: var(--fonte-mono); font-size: 26px; font-weight: 700; letter-spacing: 1px;
+    font-variant-numeric: tabular-nums; color: var(--texto);
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--raio-sm);
+    padding: 8px 16px; line-height: 1.1;
+}
+
+.resumo-pendencias { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.cartao-pendencia {
+    background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--accent);
+    border-radius: var(--raio); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px;
+}
+.cartao-pendencia.cor-verde { border-top-color: var(--verde); }
+.cartao-pendencia.cor-amarelo { border-top-color: var(--amarelo); }
+.cartao-pendencia.cor-vermelho { border-top-color: var(--vermelho); }
+.cartao-pendencia.cor-azul { border-top-color: var(--azul); }
+.cartao-pendencia.cor-ouro { border-top-color: var(--accent); }
+.cartao-pendencia-valor { font-family: var(--fonte-display); font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cartao-pendencia-rotulo { font-size: 11.5px; color: var(--texto-mudo); font-weight: 600; }
+
+.bloco-pendencia { padding: 16px 18px; }
+.bloco-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.bloco-cabecalho h2 { margin: 0; font-size: 15px; display: flex; align-items: center; }
+.bloco-contador {
+    font-family: var(--fonte-display); font-size: 12px; font-weight: 700; color: var(--texto-mudo);
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 999px;
+    min-width: 26px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0 8px;
+}
+
+/* Linha de colaborador — usada em Pendências e nas listas do dashboard */
+.linha-pessoa {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border: 1px solid var(--border); border-left: 3px solid var(--cor-linha, var(--accent));
+    border-radius: var(--raio-sm); background: var(--card-2); margin-bottom: 8px;
+    transition: border-color .15s ease, transform .15s ease;
+}
+.linha-pessoa:last-child { margin-bottom: 0; }
+.linha-pessoa:hover { transform: translateX(2px); }
+.linha-pessoa.urgente { background: rgba(242, 84, 91, .07); border-color: rgba(242, 84, 91, .3); border-left-color: var(--vermelho); }
+
+.avatar-pessoa {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+    background: var(--slate-900); border: 1px solid var(--border);
+    display: grid; place-items: center; font-size: 19px; font-weight: 700; line-height: 1;
+}
+
+.pessoa-textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pessoa-nome { font-weight: 700; font-size: 14px; }
+.pessoa-detalhe { font-size: 12.5px; color: var(--texto-mudo); line-height: 1.4; }
+.pessoa-detalhe b { color: var(--texto); font-weight: 600; }
+.marca-atraso { color: var(--amarelo); }
+
+.pessoa-direita { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; text-align: right; }
+.pessoa-destaque { font-family: var(--fonte-display); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.linha-pessoa.urgente .pessoa-destaque { color: var(--vermelho); }
+.pessoa-destaque-rotulo { font-size: 10.5px; color: var(--texto-mudo); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+
+@media (max-width: 520px) {
+    .linha-pessoa { flex-wrap: wrap; row-gap: 6px; }
+    .pessoa-direita { flex-direction: row; align-items: baseline; gap: 6px; width: 100%; justify-content: flex-start; padding-left: 48px; }
+    .pendencias-relogio { font-size: 21px; }
+}
+
 .card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--raio);
     padding: 20px; margin-bottom: 18px; box-shadow: var(--sombra-suave);

@@ -1,5 +1,5 @@
 // Mapeamento único do tipo de registro (usado em relatorio, pendências e histórico —
-// antes estava duplicado em 3 lugares diferentes do server.js original).
+// antes estava duplicado em 3 lugares diferentes).
 const TIPO_PARA_CHAVE = {
     'Entrada': 'ENTRADA',
     'Saída Almoço': 'ALMOCO_SAIDA',

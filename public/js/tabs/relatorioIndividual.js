@@ -3,6 +3,11 @@ import { toast } from '../toast.js';
 import { escapeHtml, mesAtualISO } from '../utils.js';
 import { abrirEspelho } from './espelho.js';
 
+// Último relatório carregado. A exportação lê DAQUI — antes ela varria a tabela
+// renderizada (querySelectorAll nas <tr>), o que quebrava em silêncio se as colunas
+// mudassem e ainda arrastava junto as linhas de "faltas", que têm outro formato.
+let ultimoRelatorio = null;
+
 function formatarReais(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -54,9 +59,13 @@ export async function carregarRelatorioIndividual() {
     try {
         r = await api.relatorioIndividual(id, inicio, fim);
     } catch (e) {
-        resumo.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
+        ultimoRelatorio = null;
+        resumo.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
         return;
     }
+
+    // Guarda o relatório para a exportação usar os DADOS, não o que está na tela.
+    ultimoRelatorio = { dados: r, mes, nome: document.getElementById('individual-colaborador').selectedOptions[0]?.textContent || '' };
 
     const corSaldo = r.saldoTotalMinutos >= 0 ? '#4ade80' : '#f87171';
 
@@ -121,27 +130,55 @@ export async function abrirEspelhoDoIndividual() {
     await abrirEspelho(id, nome, (funcionarioId, inicio, fim) => api.relatorioIndividual(funcionarioId, inicio, fim));
 }
 
+/** Escapa o separador e as quebras de linha para nao desalinhar as colunas do CSV. */
+function celulaCsv(valor) {
+    return String(valor ?? '').replace(/;/g, ',').replace(/\r?\n/g, ' ');
+}
+
 export function exportarRelatorioIndividualCSV() {
-    const nomeSelecionado = document.getElementById('individual-colaborador').selectedOptions[0]?.textContent;
-    const linhas = document.querySelectorAll('#individual-dias tr');
-    if (!nomeSelecionado || linhas.length === 0) {
-        toast('Carregue um relatório individual antes de exportar.', 'erro');
+    if (!ultimoRelatorio) {
+        toast('Gere um relatório antes de exportar.', 'erro');
         return;
     }
 
+    const { dados: r, nome: nomeSelecionado, mes } = ultimoRelatorio;
+
     let csv = '\ufeff';
-    csv += `Relatorio individual;${nomeSelecionado}\n\n`;
-    csv += 'Data;Entrada;Saida;Trabalhado;Atraso;Saldo;Extra 60%;Extra 100%;Noturno\n';
-    document.querySelectorAll('#individual-dias tr').forEach((tr) => {
-        const celulas = [...tr.querySelectorAll('td')].map((td) => td.textContent.trim());
-        if (celulas.length >= 9) csv += celulas.join(';') + '\n';
+    csv += `Relatorio individual;${celulaCsv(nomeSelecionado)}\n`;
+    csv += `Mes de referencia;${celulaCsv(mes)}\n\n`;
+
+    csv += 'Data;Entrada;S.Almoco;V.Almoco;Saida;Trabalhado;Atraso;Saldo;Extra 60%;Extra 100%;Noturno;Feriado\n';
+    r.dias.slice().sort((a, b) => a.dataISO.localeCompare(b.dataISO)).forEach((d) => {
+        csv += [
+            d.data,
+            d.pontos.ENTRADA || '', d.pontos.ALMOCO_SAIDA || '', d.pontos.ALMOCO_RETORNO || '', d.pontos.SAIDA || '',
+            d.tempo_trabalhado, d.atraso, d.saldo,
+            d.horas_extras.tipo === 'dia_util' ? d.horas_extras.tempo : '',
+            d.horas_extras.tipo === 'domingo_feriado' ? d.horas_extras.tempo : '',
+            d.horas_noturnas.tempo,
+            d.ehFeriado ? 'sim' : ''
+        ].map(celulaCsv).join(';') + '\n';
     });
+
+    csv += '\nTotais do periodo\n';
+    csv += `Saldo do mes;${celulaCsv(r.saldoTotal)}\n`;
+    csv += `Dias trabalhados;${r.diasTrabalhados}\n`;
+    csv += `Total de atrasos;${celulaCsv(r.atrasoTotal)}\n`;
+    csv += `Dias com atraso;${r.diasComAtraso}\n`;
+    csv += `Horas extras;${celulaCsv(r.horasExtrasTotal)}\n`;
+    csv += `Horas noturnas;${celulaCsv(r.horasNoturnasTotal)}\n`;
+    csv += `Faltas nao justificadas;${r.totalFaltas}\n`;
+
+    if (r.faltas.length) {
+        csv += '\nFaltas nao justificadas\n';
+        r.faltas.forEach((f) => { csv += `${celulaCsv(f.data.split('-').reverse().join('/'))}\n`; });
+    }
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Relatorio_Individual_${nomeSelecionado.replace(/\s+/g, '_')}.csv`;
+    link.download = `Relatorio_Individual_${nomeSelecionado.replace(/[^\w]+/g, '_')}_${mes}.csv`;
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import db from '../src/db/db.js';
 import app from '../src/app.js';
 import { comCabecalhosSeguranca } from '../src/utils/cabecalhosSeguranca.js';
+import config from '../src/config.js';
 
 let inicializado = false;
 
@@ -45,6 +46,10 @@ export default {
         }
 
         db.setD1(env.DB);
+        // As [vars] do wrangler.toml só existem aqui, no binding da requisição —
+        // sem isto o config ficaria preso nos valores padrão.
+        config.aplicarVarsDoAmbiente(env);
+
         if (!inicializado) {
             await garantirBootstrapInicial(env);
             inicializado = true;

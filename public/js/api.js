@@ -116,7 +116,6 @@ export const api = {
     // Férias (simplificada)
     listarFerias: () => chamar('/api/ferias', { admin: true }),
     feriasAgora: () => chamar('/api/ferias/agora', { admin: true }),
-    feriasDoFuncionario: (id) => chamar(`/api/ferias/funcionario/${id}`, { admin: true }),
     registrarFerias: (dados) => chamar('/api/ferias', { method: 'POST', body: dados, admin: true }),
     removerFerias: (id) => chamar(`/api/ferias/${id}`, { method: 'DELETE', admin: true }),
 

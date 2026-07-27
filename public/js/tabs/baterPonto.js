@@ -4,7 +4,6 @@ import { escapeHtml, primeiroNome, hojeISO, descreverErroCamera } from '../utils
 import { carregarModelos, detectarRosto } from '../faceRecognition.js';
 
 let idFuncionarioSelecionado = null; // seleção manual no mural (fallback)
-let ultimoPontoBatido = null;
 let registrandoPonto = false;        // trava anti duplo-toque
 let timerFecharSucesso = null;
 
@@ -172,7 +171,6 @@ async function baterPonto(tipo, funcionarioId) {
     }
     try {
         const { registro } = await api.baterPonto(funcionarioId, tipo);
-        ultimoPontoBatido = registro;
         return registro;
     } catch (e) {
         toast(e.message, 'erro');
@@ -205,10 +203,6 @@ export function fecharModalSucesso() {
     clearInterval(timerFecharSucesso);
     timerFecharSucesso = null;
     document.getElementById('modalPonto').style.display = 'none';
-}
-
-export function getUltimoPontoBatido() {
-    return ultimoPontoBatido;
 }
 
 /* ===================== Reconhecimento facial (identificação principal no totem) ===================== */

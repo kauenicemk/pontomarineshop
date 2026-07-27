@@ -64,11 +64,6 @@ async function removerAdmin(id, idSolicitante) {
     return alvo;
 }
 
-async function existeAlgumAdmin() {
-    const row = await db.get(`SELECT COUNT(*) as total FROM admins`);
-    return row.total > 0;
-}
-
 /* ===================== Senha do totem (compartilhada, define o dispositivo autorizado) ===================== */
 
 async function verificarSenhaTotem(senha) {
@@ -92,7 +87,6 @@ module.exports = {
     verificarLoginAdmin,
     listarAdmins,
     removerAdmin,
-    existeAlgumAdmin,
     verificarSenhaTotem,
     definirSenhaTotem
 };

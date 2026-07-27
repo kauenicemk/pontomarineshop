@@ -8,8 +8,6 @@
  *
  * Regra: entrada antes das 11:00 = Manhã/Tarde | 11:00 ou depois = Tarde/Noite.
  */
-export const TURNOS = ['manha_tarde', 'tarde_noite'];
-
 export const ROTULOS_TURNO = {
     manha_tarde: 'Manhã/Tarde',
     tarde_noite: 'Tarde/Noite'

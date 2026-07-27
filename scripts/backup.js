@@ -35,6 +35,29 @@ function carimboDeTempo() {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}h${p(d.getMinutes())}`;
 }
 
+/**
+ * Caminho do wrangler instalado no projeto. Executamos o .js com o próprio Node em
+ * vez de chamar `npx` — no Windows, o Node se recusa a executar arquivos .cmd/.bat
+ * diretamente (proteção contra injeção de comando, CVE-2024-27980) e o spawn falha
+ * com "EINVAL". Rodando o .js some o problema e ainda evita uma resolução via npx.
+ */
+function caminhoDoWrangler() {
+    // Resolvemos pelo package.json porque o campo "exports" do wrangler impede
+    // require.resolve('wrangler/bin/wrangler.js') diretamente.
+    let raizDoPacote;
+    try {
+        raizDoPacote = path.dirname(require.resolve('wrangler/package.json', { paths: [RAIZ] }));
+    } catch (_) {
+        throw new Error('Wrangler não encontrado. Rode "npm install" primeiro.');
+    }
+
+    const binario = path.join(raizDoPacote, 'bin', 'wrangler.js');
+    if (!fs.existsSync(binario)) {
+        throw new Error(`Wrangler encontrado, mas sem o executável esperado em ${binario}.`);
+    }
+    return binario;
+}
+
 function principal() {
     const banco = nomeDoBanco();
     fs.mkdirSync(PASTA_BACKUP, { recursive: true });
@@ -43,8 +66,8 @@ function principal() {
     console.log(`Exportando o banco "${banco}"...`);
 
     execFileSync(
-        process.platform === 'win32' ? 'npx.cmd' : 'npx',
-        ['wrangler', 'd1', 'export', banco, '--remote', `--output=${destino}`],
+        process.execPath,
+        [caminhoDoWrangler(), 'd1', 'export', banco, '--remote', `--output=${destino}`],
         { stdio: 'inherit', cwd: RAIZ }
     );
 
@@ -57,6 +80,6 @@ try {
     principal();
 } catch (erro) {
     console.error('\nFalha ao gerar o backup:', erro.message);
-    console.error('Confira se você está logado: npx wrangler login');
+    console.error('Se for erro de autenticação, rode: npx wrangler login');
     process.exit(1);
 }

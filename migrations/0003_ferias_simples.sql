@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS ferias (
     criado_em TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id)
 );
-CREATE INDEX IF NOT EXISTS idx_ferias_funcionario ON ferias(funcionario_id);
+CREATE INDEX IF NOT EXISTS idx_ferias_por_funcionario ON ferias(funcionario_id);
 CREATE INDEX IF NOT EXISTS idx_ferias_datas ON ferias(data_inicio, data_fim);

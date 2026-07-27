@@ -152,7 +152,7 @@ async function atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo
 
 /**
  * Atualiza as regras de almoço do funcionário (tolerância em minutos e/ou flexibilidade total).
- * Isso substitui a lista de exceções por nome que existia hardcoded no server.js original —
+ * Isso substitui a lista de exceções por nome que existia hardcoded no código original —
  * agora qualquer responsável ajusta isso pela tela de Administração, sem precisar mexer em código.
  */
 async function atualizarRegrasAlmoco(id, { tolerancia_almoco_min, almoco_flexivel }) {

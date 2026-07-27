@@ -5,7 +5,6 @@ import { confirmar } from '../confirmar.js';
 import { mapaDeTurnos, ROTULOS_TURNO } from '../turno.js';
 
 
-let funcionariosCache = [];
 let faltasCache = [];        // faltas do último cálculo (já filtradas por turno)
 let turnosPorFuncionario = {};
 let modoLote = false;        // o modal está justificando várias faltas de uma vez?
@@ -18,8 +17,7 @@ const ROTULOS_TIPO = {
     sem_justificativa: 'Falta confirmada'
 };
 
-export function setFuncionarios(funcionarios) {
-    funcionariosCache = funcionarios;
+export function setFuncionarios() {
     const mesInput = document.getElementById('faltas-mes');
     if (mesInput && !mesInput.value) mesInput.value = mesAtualISO();
 }

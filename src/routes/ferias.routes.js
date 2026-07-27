@@ -13,11 +13,6 @@ app.get('/agora', exigirAutorizacaoAdmin, async (c) => {
     return c.json(await feriasService.quemEstaDeFeriasAgora());
 });
 
-app.get('/funcionario/:id', exigirAutorizacaoAdmin, async (c) => {
-    const id = exigirInteiro(c.req.param('id'), 'id');
-    return c.json(await feriasService.listarPorFuncionario(id));
-});
-
 app.post('/', exigirAutorizacaoAdmin, async (c) => {
     const body = await c.req.json();
     const funcionario_id = exigirInteiro(body.funcionario_id, 'funcionario_id');

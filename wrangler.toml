@@ -9,19 +9,20 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 
 [[d1_databases]]
-binding = "DB"wrangler d1 migrations apply
+binding = "DB"
 database_name = "ponto-gaveta-pro-db"
 database_id = "e68095cf-365f-4896-a4d6-46230e86b4d7"
 
-# Variáveis não-sensíveis (equivalentes ao .env do server.js local).
+# Variáveis não-sensíveis. São lidas em src/config.js via aplicarVarsDoAmbiente(env),
+# chamado a cada requisição em public/_worker.js — no Workers elas NÃO chegam por process.env.
 [vars]
 BIOMETRIA_LIMIAR = "0.5"
 JORNADA_MENSAL_HORAS = "220"
 
-# Segredos — NÃO colocar aqui (esse arquivo normalmente é versionado). Configure com:
-#   wrangler pages secret put JWT_SECRET
-#   wrangler pages secret put ADMIN_EMAIL_INICIAL
-#   wrangler pages secret put ADMIN_SENHA_INICIAL
-#   wrangler pages secret put TOTEM_SENHA_INICIAL
-# Pra testar localmente (wrangler pages dev), copie .dev.vars.example para .dev.vars
+# Segredos — NÃO colocar aqui (este arquivo é versionado). Configure com:
+#   npx wrangler secret put JWT_SECRET
+#   npx wrangler secret put ADMIN_EMAIL_INICIAL
+#   npx wrangler secret put ADMIN_SENHA_INICIAL
+#   npx wrangler secret put TOTEM_SENHA_INICIAL
+# Para testar localmente, copie .dev.vars.example para .dev.vars
 # (já está no .gitignore) e preencha os mesmos quatro valores lá.

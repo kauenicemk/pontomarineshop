@@ -13,10 +13,7 @@ function formatarData(dataISO) {
     return dataISO ? dataISO.split('-').reverse().join('/') : '---';
 }
 
-let funcionariosCache = [];
-
 export function setFuncionarios(funcionarios) {
-    funcionariosCache = funcionarios;
     const sel = document.getElementById('ferias-funcionario');
     if (sel) {
         sel.innerHTML = '<option value="">Selecione...</option>' +

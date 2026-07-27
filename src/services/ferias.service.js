@@ -34,17 +34,6 @@ async function listar() {
     return linhas.map((l) => ({ ...l, status: calcularStatus(l.data_inicio, l.data_fim, hoje) }));
 }
 
-/** Histórico de férias de UM funcionário. */
-async function listarPorFuncionario(funcionarioId) {
-    const linhas = await db.all(
-        `SELECT id, funcionario_id, data_inicio, data_fim, observacao, criado_em
-         FROM ferias WHERE funcionario_id = ? ORDER BY data_inicio DESC`,
-        [funcionarioId]
-    );
-    const hoje = hojeISO();
-    return linhas.map((l) => ({ ...l, status: calcularStatus(l.data_inicio, l.data_fim, hoje) }));
-}
-
 /** Quem está de férias HOJE — usado no resumo/dashboard administrativo. */
 async function quemEstaDeFeriasAgora() {
     const hoje = hojeISO();
@@ -127,4 +116,4 @@ async function remover(id) {
     await registrarAuditoria('remover_ferias', 'ferias', id, {});
 }
 
-module.exports = { listar, listarPorFuncionario, quemEstaDeFeriasAgora, criar, remover };
+module.exports = { listar, quemEstaDeFeriasAgora, criar, remover };

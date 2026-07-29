@@ -39,7 +39,7 @@ export async function abrirEspelho(funcionarioId, nomeFuncionario, buscarRelator
     seletorMes.value = mesAtualRef;
 
     modal.style.display = 'flex';
-    conteudo.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    conteudo.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Carregando...</p>';
 
     seletorMes.onchange = () => { mesAtualRef = seletorMes.value; carregarConteudoEspelho(nomeFuncionario, buscarRelatorio); };
 
@@ -48,7 +48,7 @@ export async function abrirEspelho(funcionarioId, nomeFuncionario, buscarRelator
 
 async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
     const conteudo = document.getElementById('espelho-conteudo');
-    conteudo.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    conteudo.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Carregando...</p>';
 
     const { inicio, fim } = primeiroEUltimoDiaDoMes(mesAtualRef);
 
@@ -59,7 +59,7 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
             api.buscarConfirmacaoEspelho(funcionarioAtualId, mesAtualRef)
         ]);
     } catch (e) {
-        conteudo.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
+        conteudo.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
         return;
     }
 
@@ -77,7 +77,7 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
             <tbody>
                 ${diasOrdenados.map((d) => `
                     <tr>
-                        <td>${escapeHtml(d.data)}${d.ehFeriado ? ' 🎉' : ''}</td>
+                        <td>${escapeHtml(d.data)}${d.ehFeriado ? ' (feriado)' : ''}</td>
                         <td>${escapeHtml(d.pontos.ENTRADA || '---')}</td>
                         <td>${escapeHtml(d.pontos.ALMOCO_SAIDA || '---')}</td>
                         <td>${escapeHtml(d.pontos.ALMOCO_RETORNO || '---')}</td>
@@ -99,11 +99,11 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
 
         <div class="espelho-confirmacao">
             ${confirmacao.confirmado
-                ? `<p class="espelho-confirmado">✅ Confirmado por este colaborador em ${new Date(confirmacao.confirmado_em.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</p>`
+                ? `<p class="espelho-confirmado">Confirmado por este colaborador em ${new Date(confirmacao.confirmado_em.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</p>`
                 : (getTotemToken()
                     ? `<button class="action-btn" id="btn-confirmar-espelho" style="width:auto; padding:8px 16px;">Confirmo que revisei este espelho</button>
                        <p style="color:var(--texto-mudo); font-size:11.5px; margin-top:6px;">Será pedido o seu PIN pessoal para confirmar.</p>`
-                    : `<p style="color:var(--text-muted); font-size:11.5px;">Ainda não confirmado pelo colaborador — a confirmação é feita por ele, no totem da empresa.</p>`)
+                    : `<p style="color:var(--texto-mudo); font-size:11.5px;">Ainda não confirmado pelo colaborador — a confirmação é feita por ele, no totem da empresa.</p>`)
             }
         </div>
 

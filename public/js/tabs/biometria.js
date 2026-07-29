@@ -26,7 +26,7 @@ export function pararCameraAoSair() {
 
 export async function renderizarAbaBiometria() {
     const container = document.getElementById('lista-biometria');
-    container.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    container.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Carregando...</p>';
 
     let funcionarios, resumo, modelosOk;
     try {
@@ -36,17 +36,17 @@ export async function renderizarAbaBiometria() {
             carregarModelos()
         ]);
     } catch (e) {
-        container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
+        container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
         return;
     }
 
     if (!modelosOk) {
         container.innerHTML = `
-            <p style="color:#f87171">
+            <p style="color:var(--vermelho)">
                 Os arquivos do reconhecimento facial ainda não foram instalados neste servidor
                 (pasta <code>public/vendor/face-api/</code> vazia ou ausente).
             </p>
-            <p style="color:var(--text-muted); font-size:12.5px;">
+            <p style="color:var(--texto-mudo); font-size:12.5px;">
                 Rode <code>npm run setup:biometria</code> na pasta do projeto (com internet disponível)
                 e recarregue esta página. Veja o README para detalhes.
             </p>`;
@@ -65,9 +65,9 @@ export async function renderizarAbaBiometria() {
             <video class="biometria-video" autoplay muted playsinline style="display:none;"></video>
             <p class="biometria-dica" style="display:none;">Centralize o rosto, boa iluminação, e clique em "Capturar amostra".</p>
             <div class="config-row-acoes">
-                <button class="action-btn btn-abrir-camera" style="width:auto; padding:6px 12px; margin:0;">📷 Abrir câmera</button>
-                <button class="action-btn btn-capturar-amostra" style="width:auto; padding:6px 12px; margin:0; display:none; background:var(--verde);">✅ Capturar amostra</button>
-                <button class="action-btn btn-remover-biometria" style="width:auto; padding:6px 12px; margin:0; background:var(--vermelho);">🗑️ Remover amostras</button>
+                <button class="action-btn btn-abrir-camera" style="width:auto; padding:6px 12px; margin:0;">Abrir câmera</button>
+                <button class="action-btn btn-capturar-amostra" style="width:auto; padding:6px 12px; margin:0; display:none; background:var(--verde);">Capturar amostra</button>
+                <button class="action-btn btn-remover-biometria" style="width:auto; padding:6px 12px; margin:0; border-color:var(--borda-perigo); color:var(--vermelho);">Remover amostras</button>
             </div>
         </div>
     `).join('');

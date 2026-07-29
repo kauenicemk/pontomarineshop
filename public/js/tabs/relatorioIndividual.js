@@ -34,7 +34,7 @@ function primeiroEUltimoDiaDoMes(mesISO) {
 function cartaoResumo(rotulo, valor, cor) {
     return `
         <div class="cartao-resumo">
-            <span class="cartao-resumo-valor" style="color:${cor || 'var(--text-main)'}">${escapeHtml(valor)}</span>
+            <span class="cartao-resumo-valor" style="color:${cor || 'var(--texto)'}">${escapeHtml(valor)}</span>
             <span class="cartao-resumo-rotulo">${escapeHtml(rotulo)}</span>
         </div>`;
 }
@@ -46,13 +46,13 @@ export async function carregarRelatorioIndividual() {
     const tbody = document.getElementById('individual-dias');
 
     if (!id) {
-        resumo.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Selecione um colaborador para ver o relatório.</p>';
+        resumo.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Selecione um colaborador para ver o relatório.</p>';
         tbody.innerHTML = '';
         return;
     }
 
     const { inicio, fim } = primeiroEUltimoDiaDoMes(mes);
-    resumo.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    resumo.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Carregando...</p>';
     tbody.innerHTML = '';
 
     let r;
@@ -67,28 +67,28 @@ export async function carregarRelatorioIndividual() {
     // Guarda o relatório para a exportação usar os DADOS, não o que está na tela.
     ultimoRelatorio = { dados: r, mes, nome: document.getElementById('individual-colaborador').selectedOptions[0]?.textContent || '' };
 
-    const corSaldo = r.saldoTotalMinutos >= 0 ? '#4ade80' : '#f87171';
+    const corSaldo = r.saldoTotalMinutos >= 0 ? 'var(--verde)' : 'var(--vermelho)';
 
     resumo.innerHTML = `
         <div class="cartoes-resumo">
             ${cartaoResumo('Saldo do mês', r.saldoTotal, corSaldo)}
             ${cartaoResumo('Dias trabalhados', String(r.diasTrabalhados))}
-            ${cartaoResumo('Total de atrasos', r.atrasoTotal, r.atrasoTotalMinutos > 0 ? '#f87171' : undefined)}
+            ${cartaoResumo('Total de atrasos', r.atrasoTotal, r.atrasoTotalMinutos > 0 ? 'var(--vermelho)' : undefined)}
             ${cartaoResumo('Dias com atraso', String(r.diasComAtraso))}
-            ${cartaoResumo('Horas extras', r.horasExtrasTotal, '#4ade80')}
-            ${cartaoResumo('Horas noturnas', r.horasNoturnasTotal, '#38bdf8')}
-            ${cartaoResumo('Faltas não justificadas', String(r.totalFaltas), r.totalFaltas > 0 ? '#f87171' : '#4ade80')}
-            ${cartaoResumo('Violações interjornada', String(r.violacoesInterjornada.length), r.violacoesInterjornada.length > 0 ? '#f87171' : '#4ade80')}
+            ${cartaoResumo('Horas extras', r.horasExtrasTotal, 'var(--verde)')}
+            ${cartaoResumo('Horas noturnas', r.horasNoturnasTotal, 'var(--azul)')}
+            ${cartaoResumo('Faltas não justificadas', String(r.totalFaltas), r.totalFaltas > 0 ? 'var(--vermelho)' : 'var(--verde)')}
+            ${cartaoResumo('Violações interjornada', String(r.violacoesInterjornada.length), r.violacoesInterjornada.length > 0 ? 'var(--vermelho)' : 'var(--verde)')}
         </div>
         ${r.funcionario.temSalarioCadastrado ? `
             <div class="cartoes-resumo">
-                ${cartaoResumo('Valor de hora extra', formatarReais(r.valorExtraTotal), '#fbbf24')}
-                ${cartaoResumo('Valor de adic. noturno', formatarReais(r.valorNoturnoTotal), '#a78bfa')}
+                ${cartaoResumo('Valor de hora extra', formatarReais(r.valorExtraTotal), 'var(--amarelo)')}
+                ${cartaoResumo('Valor de adic. noturno', formatarReais(r.valorNoturnoTotal), 'var(--roxo)')}
             </div>
         ` : `<div class="aviso-info">Sem salário-base cadastrado — os valores em R$ de hora extra e adicional noturno não aparecem. Cadastre em Configurar Horários.</div>`}
         ${r.violacoesInterjornada.length ? `
             <div class="aviso-info" style="border-color: rgba(248,113,113,.4)">
-                ⚠️ Intervalo interjornada (mínimo 11h de descanso entre turnos) violado em:
+                Intervalo interjornada (mínimo 11h de descanso entre turnos) violado em:
                 ${r.violacoesInterjornada.map((v) => `${v.dataAnterior.split('-').reverse().join('/')} → ${v.dataAtual.split('-').reverse().join('/')} (só ${Math.floor(v.minutosDescanso / 60)}h${String(v.minutosDescanso % 60).padStart(2, '0')} de descanso)`).join('; ')}
             </div>
         ` : ''}
@@ -100,22 +100,22 @@ export async function carregarRelatorioIndividual() {
             const extra100 = d.horas_extras.tipo === 'domingo_feriado' && d.horas_extras.tempo !== '00:00' ? escapeHtml(d.horas_extras.tempo) : '---';
             return `
             <tr>
-                <td>${escapeHtml(d.data)}${d.ehFeriado ? ' 🎉' : ''}</td>
+                <td>${escapeHtml(d.data)}${d.ehFeriado ? ' (feriado)' : ''}</td>
                 <td>${escapeHtml(d.pontos.ENTRADA || '---')}</td>
                 <td>${escapeHtml(d.pontos.SAIDA || '---')}</td>
                 <td><b>${escapeHtml(d.tempo_trabalhado)}</b></td>
-                <td style="color:${d.atraso !== '00:00' ? '#ef4444' : 'var(--texto)'}">${escapeHtml(d.atraso)}</td>
-                <td style="color:${d.saldo.startsWith('+') ? '#22c55e' : '#ef4444'}">${escapeHtml(d.saldo)}</td>
+                <td style="color:${d.atraso !== '00:00' ? 'var(--vermelho)' : 'var(--texto)'}">${escapeHtml(d.atraso)}</td>
+                <td style="color:${d.saldo.startsWith('+') ? 'var(--verde)' : 'var(--vermelho)'}">${escapeHtml(d.saldo)}</td>
                 <td>${extra60}</td>
                 <td>${extra100}</td>
-                <td>${d.horas_noturnas.tempo !== '00:00' ? '🌙 ' + escapeHtml(d.horas_noturnas.tempo) : '---'}</td>
+                <td>${d.horas_noturnas.tempo !== '00:00' ? escapeHtml(d.horas_noturnas.tempo) : '---'}</td>
             </tr>`;
         }).join('')
         : '<tr><td colspan="9" style="color:var(--texto-mudo)">Nenhum registro no período.</td></tr>';
 
     if (r.faltas.length) {
         tbody.innerHTML += `<tr><td colspan="9" style="padding-top:14px; border-top:2px solid var(--border); color:var(--vermelho); font-weight:600;">Faltas não justificadas no período:</td></tr>` +
-            r.faltas.map((f) => `<tr><td colspan="9" style="color:#ef4444">${escapeHtml(f.data.split('-').reverse().join('/'))}</td></tr>`).join('');
+            r.faltas.map((f) => `<tr><td colspan="9" style="color:var(--vermelho)">${escapeHtml(f.data.split('-').reverse().join('/'))}</td></tr>`).join('');
     }
 }
 

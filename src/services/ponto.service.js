@@ -1,11 +1,12 @@
 const db = require('../db/db');
+const config = require('../config');
 const { agoraBrasilia, paraMinutos, grupoDoDia } = require('../utils/tempo');
 const { registrarAuditoria } = require('../utils/auditoria');
 
-// Minutos de carência antes de alguém que não bateu ponto ser destacado como ATRASADO
-// na tela de Pendências. É só a régua do alerta visual — não interfere no cálculo de
-// atraso do relatório (esse usa a regra da CLT/config, com a tolerância de 10 minutos).
-const TOLERANCIA_ATRASO_PENDENCIA_MIN = 10;
+// A tela de Pendências usa a MESMA tolerância de entrada do cálculo de atraso. Antes
+// havia um 10 escrito à parte aqui: bastava mudar a regra num lugar para as duas telas
+// passarem a discordar — o relatório dizendo "sem atraso" e o painel dizendo "atrasado".
+const TOLERANCIA_ATRASO_PENDENCIA_MIN = config.jornada.toleranciaEntradaMin;
 
 // Tetos das listagens. Sem eles, as consultas crescem para sempre junto com o
 // histórico e um dia começam a travar a tela (e a custar mais no D1).
@@ -293,9 +294,12 @@ async function pendenciasDoDia() {
             if (p.ALMOCO_SAIDA && !p.ALMOCO_RETORNO) { status = 'Em Almoço'; desde = p.ALMOCO_SAIDA; }
             else if (p.ALMOCO_RETORNO) { desde = p.ALMOCO_RETORNO; }
 
+            // Só marca "chegou atrasado" quem passou da tolerância — quem chegou 5 min
+            // depois não tem atraso no relatório, então também não pode ter aqui.
             const atrasoEntrada = horarioPrevisto
                 ? Math.max(0, paraMinutos(p.ENTRADA) - paraMinutos(horarioPrevisto))
                 : 0;
+            const atrasoContado = atrasoEntrada > TOLERANCIA_ATRASO_PENDENCIA_MIN ? atrasoEntrada : 0;
 
             presentesAgora.push({
                 ...base,
@@ -303,8 +307,8 @@ async function pendenciasDoDia() {
                 desde,
                 entrada: p.ENTRADA,
                 minutosDesde: Math.max(0, horaAtualMin - paraMinutos(desde)),
-                chegouAtrasado: atrasoEntrada > 0,
-                minutosAtrasoEntrada: atrasoEntrada
+                chegouAtrasado: atrasoContado > 0,
+                minutosAtrasoEntrada: atrasoContado
             });
             return;
         }

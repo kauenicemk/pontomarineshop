@@ -15,7 +15,7 @@ function formatarReais(valor) {
 
 function cartao(rotulo, valor, cor) {
     return `<div class="cartao-resumo">
-        <span class="cartao-resumo-valor" style="color:${cor || 'var(--text-main)'}">${escapeHtml(String(valor))}</span>
+        <span class="cartao-resumo-valor" style="color:${cor || 'var(--texto)'}">${escapeHtml(String(valor))}</span>
         <span class="cartao-resumo-rotulo">${escapeHtml(rotulo)}</span>
     </div>`;
 }
@@ -35,7 +35,7 @@ export async function carregarIndicadores() {
     const mesInput = document.getElementById('indicadores-mes');
     if (!mesInput.value) mesInput.value = mesAtualISO();
 
-    container.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    container.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Carregando...</p>';
 
     const { inicio, fim } = primeiroEUltimoDiaDoMes(mesInput.value);
 
@@ -43,7 +43,7 @@ export async function carregarIndicadores() {
     try {
         dados = await api.indicadoresGerais(inicio, fim);
     } catch (e) {
-        container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
+        container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
         return;
     }
 
@@ -60,17 +60,17 @@ export async function carregarIndicadores() {
         </div>
 
         ${dados.custos.funcionariosSemSalarioCadastrado > 0 ? `
-            <div class="aviso-info">⚠️ ${dados.custos.funcionariosSemSalarioCadastrado} funcionário(s) sem salário-base cadastrado — o custo de hora extra/noturno mostrado acima está subestimado. Cadastre em Configurar Horários para um número completo.</div>
+            <div class="aviso-info">${dados.custos.funcionariosSemSalarioCadastrado} funcionário(s) sem salário-base cadastrado — o custo de hora extra/noturno mostrado acima está subestimado. Cadastre em Configurar Horários para um número completo.</div>
         ` : ''}
 
         <div class="card" style="margin-top:16px;">
             <h3>Headcount por regime</h3>
-            ${Object.entries(dados.headcount.porRegime).map(([regime, qtd]) => barraProporcional(regime, qtd, maiorHeadcountRegime, 'var(--azul)')).join('') || '<p style="color:var(--text-muted); font-size:12px;">Sem dados.</p>'}
+            ${Object.entries(dados.headcount.porRegime).map(([regime, qtd]) => barraProporcional(regime, qtd, maiorHeadcountRegime, 'var(--azul)')).join('') || '<p style="color:var(--texto-mudo); font-size:12px;">Sem dados.</p>'}
         </div>
 
         <div class="card">
             <h3>Headcount por departamento</h3>
-            ${Object.entries(dados.headcount.porDepartamento).map(([dep, qtd]) => barraProporcional(dep, qtd, maiorHeadcountDep, 'var(--roxo)')).join('') || '<p style="color:var(--text-muted); font-size:12px;">Sem dados.</p>'}
+            ${Object.entries(dados.headcount.porDepartamento).map(([dep, qtd]) => barraProporcional(dep, qtd, maiorHeadcountDep, 'var(--roxo)')).join('') || '<p style="color:var(--texto-mudo); font-size:12px;">Sem dados.</p>'}
         </div>
 
         <div class="card">
@@ -82,10 +82,10 @@ export async function carregarIndicadores() {
                         ${dados.rankingAtrasos.length ? dados.rankingAtrasos.map((r) => `
                             <tr>
                                 <td>${escapeHtml(r.emoji)} ${escapeHtml(primeiroNome(r.nome))}</td>
-                                <td style="color:${r.diasComAtraso >= 5 ? 'var(--vermelho)' : 'var(--text-main)'}"><b>${r.diasComAtraso}</b></td>
+                                <td style="color:${r.diasComAtraso >= 5 ? 'var(--vermelho)' : 'var(--texto)'}"><b>${r.diasComAtraso}</b></td>
                                 <td>${Math.floor(r.minutosTotal / 60)}h${String(r.minutosTotal % 60).padStart(2, '0')}</td>
                             </tr>
-                        `).join('') : '<tr><td colspan="3" style="color:var(--verde)">Ninguém com atraso recorrente no período. ✅</td></tr>'}
+                        `).join('') : '<tr><td colspan="3" style="color:var(--verde)">Ninguém com atraso recorrente no período. </td></tr>'}
                     </tbody>
                 </table>
             </div>

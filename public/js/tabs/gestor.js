@@ -10,12 +10,28 @@ export function popularSeletorAjuste(funcionarios) {
         funcionarios.map((f) => `<option value="${f.id}">${escapeHtml(f.emoji)} ${escapeHtml(f.nome)} (${escapeHtml(f.regime)})</option>`).join('');
 }
 
+/** 'YYYY-MM-DD' -> 'DD/MM/YYYY' */
+function formatarDataBR(dataISO) {
+    return String(dataISO || '').split('-').reverse().join('/');
+}
+
+/** Data de N dias atrás, em ISO — usada para não pedir o histórico inteiro de uma vez. */
+function diasAtras(dias) {
+    const d = new Date();
+    d.setDate(d.getDate() - dias);
+    return d.toISOString().slice(0, 10);
+}
+
 export async function carregarGavetasGerais() {
     const espaco = document.getElementById('espaco-gavetas');
-    espaco.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    espaco.innerHTML = '<p class="texto-vazio">Carregando...</p>';
 
     try {
-        const dados = await api.historicoGeral();
+        // Últimos 30 dias por padrão. Antes esta tela pedia o histórico inteiro sem filtro:
+        // com o tempo isso vira milhares de linhas baixadas a cada visita, para mostrar
+        // gavetas que ninguém abre além das mais recentes. O período completo continua
+        // disponível no Relatório Consolidado e no Relatório Individual.
+        const dados = await api.historicoGeral(diasAtras(30), '');
         const agrupadosPorDia = {};
         dados.forEach((d) => {
             if (!agrupadosPorDia[d.data]) agrupadosPorDia[d.data] = {};
@@ -31,7 +47,7 @@ export async function carregarGavetasGerais() {
             const div = document.createElement('div'); div.className = 'gaveta-container';
             const header = document.createElement('div'); header.className = 'gaveta-header';
             const total = Object.keys(agrupadosPorDia[data]).length;
-            header.innerHTML = `<span>📅 Dia: ${escapeHtml(data)}</span> <span>⬇ (${total} colaboradores ativos)</span>`;
+            header.innerHTML = `<span>${escapeHtml(formatarDataBR(data))}</span> <span>${total} colaborador(es)</span>`;
 
             const cont = document.createElement('div'); cont.className = 'gaveta-conteudo';
             Object.keys(agrupadosPorDia[data]).forEach((nome) => {
@@ -40,10 +56,10 @@ export async function carregarGavetasGerais() {
                     <div class="colaborador-linha-gaveta">
                         <span class="info-nome">${escapeHtml(obj.emoji)} ${escapeHtml(primeiroNome(nome))}</span>
                         <div class="info-horarios">
-                            <span>🛫 Ent: <b>${escapeHtml(obj.Ent)}</b></span>
-                            <span>🥪 S.Alm: <b>${escapeHtml(obj.S_Alm)}</b></span>
-                            <span>📥 V.Alm: <b>${escapeHtml(obj.V_Alm)}</b></span>
-                            <span>🛬 Sai: <b>${escapeHtml(obj.Sai)}</b></span>
+                            <span>Entrada: <b>${escapeHtml(obj.Ent)}</b></span>
+                            <span>S. Almoço: <b>${escapeHtml(obj.S_Alm)}</b></span>
+                            <span>V. Almoço: <b>${escapeHtml(obj.V_Alm)}</b></span>
+                            <span>Saída: <b>${escapeHtml(obj.Sai)}</b></span>
                         </div>
                     </div>`;
             });
@@ -52,7 +68,7 @@ export async function carregarGavetasGerais() {
             div.appendChild(header); div.appendChild(cont); espaco.appendChild(div);
         });
     } catch (e) {
-        espaco.innerHTML = `<p style="color:#f87171; font-size:13px;">${e.message === 'cancelado' ? 'Acesso cancelado.' : 'Erro ao carregar: ' + escapeHtml(e.message)}</p>`;
+        espaco.innerHTML = `<p style="color:var(--vermelho); font-size:13px;">${e.message === 'cancelado' ? 'Acesso cancelado.' : 'Erro ao carregar: ' + escapeHtml(e.message)}</p>`;
     }
 }
 
@@ -74,21 +90,21 @@ export async function renderizarRelatorioGestor() {
         const j = dia.justificativas;
         const cel = (t) => {
             const h = dia.pontos[t] || '---';
-            return j[t] ? `${escapeHtml(h)} <span class="badge-manual" title="${escapeHtml(j[t])}">⚠️ Man.</span>` : escapeHtml(h);
+            return j[t] ? `${escapeHtml(h)} <span class="badge-manual" title="${escapeHtml(j[t])}">ajuste</span>` : escapeHtml(h);
         };
         const extra60 = dia.horas_extras.tipo === 'dia_util' && dia.horas_extras.tempo !== '00:00' ? `<b>${escapeHtml(dia.horas_extras.tempo)}</b>` : '---';
         const extra100 = dia.horas_extras.tipo === 'domingo_feriado' && dia.horas_extras.tempo !== '00:00' ? `<b>${escapeHtml(dia.horas_extras.tempo)}</b>` : '---';
         const linha = document.createElement('tr');
         linha.innerHTML = `
             <td>${escapeHtml(dia.emoji)} ${escapeHtml(primeiroNome(dia.nome))}</td>
-            <td>${escapeHtml(dia.data.substring(0, 5))}${dia.ehFeriado ? ' 🎉' : ''}</td>
+            <td>${escapeHtml(dia.data.substring(0, 5))}${dia.ehFeriado ? ' (fer.)' : ''}</td>
             <td>${cel('ENTRADA')}</td><td>${cel('ALMOCO_SAIDA')}</td><td>${cel('ALMOCO_RETORNO')}</td><td>${cel('SAIDA')}</td>
             <td><b>${escapeHtml(dia.tempo_trabalhado)}</b></td>
-            <td style="color:${dia.atraso !== '00:00' ? '#ef4444' : 'var(--texto)'}"><b>${escapeHtml(dia.atraso)}</b></td>
-            <td style="color:${dia.saldo.startsWith('+') ? '#22c55e' : '#ef4444'}"><b>${escapeHtml(dia.saldo)}</b></td>
+            <td style="color:${dia.atraso !== '00:00' ? 'var(--vermelho)' : 'var(--texto)'}"><b>${escapeHtml(dia.atraso)}</b></td>
+            <td style="color:${dia.saldo.startsWith('+') ? 'var(--verde)' : 'var(--vermelho)'}"><b>${escapeHtml(dia.saldo)}</b></td>
             <td>${extra60}</td>
             <td>${extra100}</td>
-            <td>${dia.horas_noturnas.tempo !== '00:00' ? `<b>🌙 ${escapeHtml(dia.horas_noturnas.tempo)}</b>` : '---'}</td>
+            <td>${dia.horas_noturnas.tempo !== '00:00' ? `<b>${escapeHtml(dia.horas_noturnas.tempo)}</b>` : '---'}</td>
         `;
         tbody.appendChild(linha);
     });

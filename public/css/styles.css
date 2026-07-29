@@ -1,17 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 
 /* =====================================================================
-   PONTO MARINE SHOP — DESIGN SYSTEM v2
+   PONTO MARINE SHOP — DESIGN SYSTEM v3
    Identidade derivada da logo oficial: grafite (slate) + laranja Marine.
-   Arquitetura de tokens em duas camadas:
-     1. Primitivos  (--slate-*, --orange-*)  — valores brutos
-     2. Semânticos  (--bg, --card, --accent…) — o que os componentes usam
-   Os nomes semânticos antigos são preservados: os módulos JS os referenciam
-   em estilos inline e nada quebra.
+
+   TEMAS: escuro é o padrão. O tema claro entra por [data-tema="claro"] no
+   <html> e reescreve APENAS os tokens semânticos — nenhum componente sabe
+   qual tema está ativo, então nada precisa ser duplicado. As cores de estado
+   (verde/vermelho/…) mudam de tom entre os temas: o que contrasta bem sobre
+   um fundo quase preto fica lavado sobre branco, e vice-versa.
    ===================================================================== */
 
 :root {
-    /* ---- Primitivos ---- */
+    /* ---- Primitivos (valores brutos, iguais nos dois temas) ---- */
     --slate-950: #0b0e14;
     --slate-900: #10141d;
     --slate-850: #151b27;
@@ -24,19 +25,24 @@
     --orange-500: #f0821e;   /* laranja da logo Marine Shop */
     --orange-600: #d96f0e;
     --orange-300: #ffb45e;
+    --orange-800: #9a4d05;
 
-    /* ---- Semânticos (nomes preservados) ---- */
+    /* ---- Semânticos — TEMA ESCURO (padrão) ---- */
     --bg: var(--slate-950);
     --bg-elevado: var(--slate-900);
     --card: var(--slate-850);
     --card-2: var(--slate-800);
+    --campo-fundo: var(--slate-900);
     --border: var(--slate-700);
     --texto: var(--slate-100);
     --texto-mudo: var(--slate-400);
+    --texto-sutil: var(--slate-500);
 
     --accent: var(--orange-500);
     --accent-forte: var(--orange-600);
     --accent-suave: rgba(240, 130, 30, .12);
+    --accent-texto: var(--orange-300);   /* laranja legível como TEXTO neste fundo */
+    --sobre-accent: #1c1002;             /* cor do texto em cima do laranja */
     --ouro: var(--orange-500);
     --ouro-suave: var(--orange-300);
 
@@ -45,6 +51,13 @@
     --amarelo: #f5b331;
     --azul: #4aa8e0;
     --roxo: #a78bfa;
+
+    --verde-suave: rgba(47, 206, 112, .10);
+    --vermelho-suave: rgba(242, 84, 91, .09);
+    --borda-perigo: rgba(242, 84, 91, .40);
+
+    --brilho-topo: rgba(255, 255, 255, .04);  /* realce sutil no topo dos cards */
+    --hover-sutil: rgba(255, 255, 255, .03);
 
     --raio: 14px;
     --raio-sm: 10px;
@@ -56,13 +69,67 @@
     --fonte-display: 'Sora', system-ui, sans-serif;
     --fonte-mono: 'Consolas', ui-monospace, monospace;
 
-    /* Aliases pra compatibilidade com estilos inline nos módulos JS */
-    --text-main: var(--texto);
-    --text-muted: var(--texto-mudo);
-    --card-bg: var(--card);
-    --card-bg-2: var(--card-2);
-    --radius: var(--raio);
-    --radius-sm: var(--raio-sm);
+    --overlay: rgba(5, 7, 11, .78);
+    --halo-quente: rgba(240, 130, 30, .07);
+    --halo-frio: rgba(74, 168, 224, .05);
+    --transicao: 180ms cubic-bezier(.4, 0, .2, 1);
+    --transicao-suave: 320ms cubic-bezier(.22, 1, .36, 1);
+    color-scheme: dark;
+}
+
+/* ---- Semânticos — TEMA CLARO ---- */
+[data-tema="claro"] {
+    --bg: #f4f6f9;
+    --bg-elevado: #ffffff;
+    --card: #ffffff;
+    --card-2: #f1f4f8;
+    --campo-fundo: #ffffff;
+    --border: #dfe4ec;
+    --texto: #141c28;
+    --texto-mudo: #55637a;
+    --texto-sutil: #8996a8;
+
+    --accent: var(--orange-500);
+    --accent-forte: var(--orange-600);
+    --accent-suave: rgba(240, 130, 30, .13);
+    /* Sobre branco, o laranja da marca não alcança 4.5:1 — o texto usa um tom
+       mais fechado da mesma família, mantendo a identidade e a legibilidade. */
+    --accent-texto: var(--orange-800);
+    --sobre-accent: #1c1002;
+
+    /* Tons mais fechados: os de tema escuro ficariam lavados sobre branco. */
+    --verde: #15803d;
+    --vermelho: #c62828;
+    --amarelo: #a16207;
+    --azul: #1565a8;
+    --roxo: #6d4bc7;
+
+    --verde-suave: rgba(21, 128, 61, .09);
+    --vermelho-suave: rgba(198, 40, 40, .07);
+    --borda-perigo: rgba(198, 40, 40, .34);
+
+    --brilho-topo: rgba(255, 255, 255, 0);
+    --hover-sutil: rgba(20, 28, 40, .035);
+
+    --sombra: 0 18px 44px rgba(24, 39, 62, .14);
+    --sombra-suave: 0 2px 10px rgba(24, 39, 62, .07);
+    --overlay: rgba(20, 28, 40, .45);
+    --halo-quente: rgba(240, 130, 30, .05);
+    --halo-frio: rgba(74, 168, 224, .04);
+    color-scheme: light;
+}
+
+/* A troca de tema só anima enquanto a classe está presente (aplicada por
+   js/tema.js e removida logo depois). Sem isso, uma transição global ficaria
+   ligada o tempo todo e deixaria cada hover/scroll mais pesado. */
+.trocando-tema,
+.trocando-tema *,
+.trocando-tema *::before,
+.trocando-tema *::after {
+    transition: background-color var(--transicao-suave),
+                border-color var(--transicao-suave),
+                color var(--transicao-suave),
+                box-shadow var(--transicao-suave) !important;
 }
 
 * { box-sizing: border-box; }
@@ -75,11 +142,15 @@ body {
     font-size: 16px;
     line-height: 1.5;
     color: var(--texto);
+    /* Dois halos bem discretos dão profundidade ao fundo chapado. No tema claro
+       eles ficam ainda mais fracos, senão viram manchas amareladas no branco. */
     background:
-        radial-gradient(1100px 520px at 12% -8%, rgba(240, 130, 30, .07), transparent 60%),
-        radial-gradient(900px 560px at 105% 8%, rgba(74, 168, 224, .05), transparent 55%),
+        radial-gradient(1100px 520px at 12% -8%, var(--halo-quente), transparent 60%),
+        radial-gradient(900px 560px at 105% 8%, var(--halo-frio), transparent 55%),
         var(--bg);
+    background-attachment: fixed;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3 { font-family: var(--fonte-display); letter-spacing: -.01em; }
@@ -143,6 +214,45 @@ a { color: var(--accent); }
 .icone-svg { width: 18px; height: 18px; flex-shrink: 0; }
 .icone-ponto { width: 26px; height: 26px; }
 
+/* ===================== Alternador de tema ===================== */
+
+.troca-tema {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: none; border: none; padding: 6px 4px; color: var(--texto-mudo);
+    font-size: 12.5px; font-weight: 600; font-family: inherit; min-height: 40px;
+    transition: color var(--transicao);
+}
+.troca-tema:hover { color: var(--texto); }
+
+/* O trilho e o botão do switch. A bolinha desliza com um easing levemente
+   elástico — é a única animação "divertida" do sistema, e serve de confirmação
+   imediata de que o clique foi registrado. */
+.switch-trilho {
+    position: relative; width: 46px; height: 26px; flex-shrink: 0;
+    border-radius: 999px; background: var(--card-2);
+    border: 1px solid var(--border);
+    transition: background var(--transicao), border-color var(--transicao);
+}
+.troca-tema:hover .switch-trilho { border-color: var(--accent); }
+
+.switch-bolinha {
+    position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--accent);
+    display: grid; place-items: center; color: var(--sobre-accent);
+    transition: transform 340ms cubic-bezier(.34, 1.56, .64, 1), background var(--transicao);
+}
+[data-tema="claro"] .switch-bolinha { transform: translateX(20px); }
+
+/* Os dois ícones ocupam a mesma célula do grid e alternam com giro + fade. */
+.switch-bolinha .icone-svg {
+    grid-area: 1 / 1; width: 13px; height: 13px;
+    transition: opacity 220ms ease, transform 340ms cubic-bezier(.34, 1.56, .64, 1);
+}
+.switch-icone-sol { opacity: 0; transform: rotate(-90deg) scale(.5); }
+.switch-icone-lua { opacity: 1; transform: rotate(0) scale(1); }
+[data-tema="claro"] .switch-icone-sol { opacity: 1; transform: rotate(0) scale(1); }
+[data-tema="claro"] .switch-icone-lua { opacity: 0; transform: rotate(90deg) scale(.5); }
+
 /* ===================== Utilitários ===================== */
 
 .escondido { display: none !important; }
@@ -157,10 +267,8 @@ a { color: var(--accent); }
 }
 .btn-principal { background: var(--accent); color: #1c1002; box-shadow: 0 6px 20px rgba(240, 130, 30, .28); }
 .btn-principal:hover { background: var(--orange-300); }
-.btn-ouro { background: linear-gradient(135deg, var(--orange-500), var(--orange-300)); color: #1c1002; }
 .btn-secundario { background: var(--card-2); color: var(--texto); border: 1px solid var(--border); }
 .btn-secundario:hover { border-color: var(--accent); }
-.btn-perigo { background: rgba(242, 84, 91, .14); color: var(--vermelho); border: 1px solid rgba(242, 84, 91, .32); }
 .btn-perigo-solido { background: var(--vermelho); color: #fff; }
 .btn-perigo-solido:hover { filter: brightness(1.1); }
 .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
@@ -172,7 +280,7 @@ a { color: var(--accent); }
     padding: 8px 14px; transition: border-color .18s ease, color .18s ease; font-family: inherit;
     display: inline-flex; align-items: center; gap: 6px; min-height: 36px; cursor: pointer;
 }
-.action-btn:hover { border-color: var(--accent); color: #fff; }
+.action-btn:hover { border-color: var(--accent); color: var(--accent-texto); }
 
 .btn-ocupado { position: relative; pointer-events: none; opacity: .7; }
 .spinner {
@@ -183,7 +291,7 @@ a { color: var(--accent); }
 @keyframes girar { to { transform: rotate(360deg); } }
 
 .campo {
-    background: var(--slate-900); border: 1px solid var(--border); color: var(--texto);
+    background: var(--campo-fundo); border: 1px solid var(--border); color: var(--texto);
     padding: 11px 14px; border-radius: var(--raio-sm); font-size: 14px; font-family: inherit;
     width: 100%; transition: border-color .18s ease, box-shadow .18s ease; min-height: 44px;
 }
@@ -198,7 +306,7 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th { color: var(--texto-mudo); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .5px; }
 tbody tr { transition: background .15s ease; }
-tbody tr:hover { background: rgba(255, 255, 255, .025); }
+tbody tr:hover { background: var(--hover-sutil); }
 .tabela-wrap { overflow-x: auto; }
 
 .erro-msg { color: var(--vermelho); font-size: 12.5px; min-height: 18px; margin: 4px 0 0; }
@@ -214,7 +322,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 }
 .skeleton::after {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .05), transparent);
+    background: linear-gradient(90deg, transparent, var(--brilho-topo), transparent);
     animation: brilhar 1.4s ease infinite;
 }
 @keyframes brilhar { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
@@ -353,7 +461,19 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 }
 .admin-sidebar .marca-logo { padding: 6px 10px 18px; }
 
-.admin-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.admin-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; position: relative; }
+
+/* Indicador que DESLIZA até o item ativo. É um único elemento posicionado por JS
+   (js/main.js) — cada botão continua sem fundo próprio, então a sensação é de um
+   destaque único que acompanha a navegação em vez de piscar de um lugar para outro. */
+.admin-nav-indicador {
+    position: absolute; left: 0; top: 0; width: 100%; height: 0;
+    border-radius: var(--raio-sm); background: var(--accent);
+    transition: transform var(--transicao-suave), height var(--transicao-suave), opacity var(--transicao);
+    pointer-events: none; opacity: 0; z-index: 0;
+}
+.admin-nav-indicador.visivel { opacity: 1; }
+.admin-nav button { position: relative; z-index: 1; }
 .admin-nav-grupo {
     color: var(--slate-500); font-size: 10.5px; font-weight: 800; text-transform: uppercase;
     letter-spacing: 1px; margin: 14px 0 4px; padding: 0 12px;
@@ -365,10 +485,18 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
     font-weight: 600; width: 100%; min-height: 40px; transition: background .15s ease, color .15s ease;
 }
 .admin-nav button:hover { background: var(--card-2); color: var(--texto); }
-.admin-nav button.ativo { background: var(--accent); color: #1c1002; }
-.admin-nav .icone-svg { width: 17px; height: 17px; }
+/* O fundo do item ativo é o indicador deslizante, não o próprio botão. */
+.admin-nav button.ativo { background: none; color: var(--sobre-accent); }
+.admin-nav button.ativo:hover { background: none; color: var(--sobre-accent); }
+.admin-nav .icone-svg { width: 17px; height: 17px; transition: transform var(--transicao); }
+.admin-nav button.ativo .icone-svg { transform: scale(1.08); }
 
 .admin-rodape-sidebar { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.admin-rodape-sidebar .troca-tema { justify-content: flex-start; padding-left: 10px; }
+
+/* Alternador nas telas de login e no cabeçalho do totem */
+.rodape-login { display: flex; justify-content: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.totem-acoes .troca-tema { padding: 0; }
 .admin-rodape-sidebar .nome-admin { font-size: 12.5px; color: var(--texto-mudo); padding: 0 12px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Retorno rápido ao totem (pedido: admin não tinha caminho de volta) */
@@ -395,7 +523,14 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 .admin-secao-subtitulo { color: var(--texto-mudo); font-size: 13px; margin: 0 0 22px; }
 
 .admin-tela { display: none; }
-.admin-tela.ativa { display: block; animation: aparecer .2s ease; }
+/* A tela entra deslizando de baixo — dá continuidade espacial à troca de aba
+   em vez de o conteúdo simplesmente trocar de uma vez. */
+.admin-tela.ativa { display: block; animation: entrar-tela 280ms cubic-bezier(.22, 1, .36, 1); }
+
+@keyframes entrar-tela {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 /* Dashboard */
 .grade-resumo-dia { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 26px; }
@@ -461,7 +596,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 
 .avatar-pessoa {
     width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
-    background: var(--slate-900); border: 1px solid var(--border);
+    background: var(--card-2); border: 1px solid var(--border);
     display: grid; place-items: center; font-size: 19px; font-weight: 700; line-height: 1;
 }
 
@@ -516,7 +651,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
     padding: 14px 16px; font-size: 14px; font-family: inherit; min-height: 52px;
     transition: background .15s ease;
 }
-.config-gaveta-header:hover { background: rgba(255, 255, 255, .03); }
+.config-gaveta-header:hover { background: var(--hover-sutil); }
 .config-gaveta-titulo { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .config-gaveta-meta { display: flex; align-items: center; gap: 8px; color: var(--texto-mudo); font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .config-gaveta-seta { width: 16px; height: 16px; transition: transform .2s ease; }
@@ -547,12 +682,12 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 .canvas-wrap { position: relative; }
 #grafico-banco-horas { width: 100%; display: block; }
 .banco-tooltip {
-    position: absolute; pointer-events: none; background: var(--slate-950);
+    position: absolute; pointer-events: none; background: var(--bg-elevado);
     border: 1px solid var(--border); color: var(--texto); font-size: 11.5px;
     padding: 8px 11px; border-radius: var(--raio-sm); white-space: nowrap;
     box-shadow: var(--sombra); z-index: 5; line-height: 1.6;
 }
-.banco-tooltip b { color: #fff; }
+.banco-tooltip b { color: var(--texto); }
 .canvas-wrap { margin-top: 4px; }
 
 .cartoes-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 18px; }
@@ -572,7 +707,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .025); }
 
 /* ===================== Modais ===================== */
 
-.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(5, 7, 11, .78); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
 .modal-box {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--raio);
     padding: 26px; max-width: 400px; width: 100%; text-align: center;
@@ -607,7 +742,7 @@ tr.selecionada { background: var(--accent-suave); }
 .modal-box-justificar h3 { text-align: center; }
 .lista-revisao {
     max-height: 190px; overflow-y: auto; border: 1px solid var(--border);
-    border-radius: var(--raio-sm); background: var(--slate-900);
+    border-radius: var(--raio-sm); background: var(--card-2);
     padding: 8px 12px; margin: 10px 0 12px; font-size: 12.5px;
 }
 .lista-revisao .item-revisao { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }

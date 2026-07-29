@@ -4,7 +4,7 @@ import { escapeHtml } from '../utils.js';
 
 export async function carregarFeriados() {
     const tbody = document.getElementById('lista-feriados');
-    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted)">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--texto-mudo)">Carregando...</td></tr>';
 
     const feriados = await api.listarFeriados();
     tbody.innerHTML = feriados.length
@@ -13,9 +13,9 @@ export async function carregarFeriados() {
                 <td>${escapeHtml(f.data.split('-').reverse().join('/'))}</td>
                 <td>${escapeHtml(f.nome)}</td>
                 <td>${escapeHtml(f.abrangencia)}</td>
-                <td><button class="action-btn btn-remover-feriado" data-id="${f.id}" style="width:auto; padding:4px 10px; margin:0; background:#f87171;">Remover</button></td>
+                <td><button class="action-btn btn-remover-feriado" data-id="${f.id}" style="width:auto; padding:4px 10px; margin:0; background:var(--vermelho);">Remover</button></td>
             </tr>`).join('')
-        : '<tr><td colspan="4" style="color:var(--text-muted)">Nenhum feriado cadastrado.</td></tr>';
+        : '<tr><td colspan="4" style="color:var(--texto-mudo)">Nenhum feriado cadastrado.</td></tr>';
 
     tbody.querySelectorAll('.btn-remover-feriado').forEach((btn) => {
         btn.addEventListener('click', async () => {

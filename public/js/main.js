@@ -2,6 +2,7 @@ import * as authMod from './auth.js';
 import { toast } from './toast.js';
 import { hojeISO, comBotaoOcupado } from './utils.js';
 import { montarLogos } from './brand.js';
+import { aplicarTemaSalvo, montarAlternadores } from './tema.js';
 import { api } from './api.js';
 import { confirmar } from './confirmar.js';
 
@@ -197,6 +198,22 @@ function carregarConteudoAdminAba(nomeAba) {
     if (nomeAba === 'auditoria') { auditoria.iniciarAuditoria().then(() => auditoria.carregarAuditoria()); }
 }
 
+/**
+ * Move o indicador deslizante até o item ativo do menu. Mede posição e tamanho do
+ * botão porque o menu muda de orientação (vertical no desktop, horizontal e rolável
+ * no celular) — usar as duas medidas faz o indicador acompanhar nos dois casos.
+ */
+function posicionarIndicadorAba(botao) {
+    const nav = document.querySelector('.admin-nav');
+    const indicador = document.getElementById('admin-nav-indicador');
+    if (!nav || !indicador || !botao) return;
+
+    indicador.style.height = `${botao.offsetHeight}px`;
+    indicador.style.width = `${botao.offsetWidth}px`;
+    indicador.style.transform = `translate(${botao.offsetLeft}px, ${botao.offsetTop}px)`;
+    indicador.classList.add('visivel');
+}
+
 function mudarAdminAba(nomeAba, botao) {
     if (subAbaAdminAtual === 'biometria' && nomeAba !== 'biometria') biometria.pararCameraAoSair();
 
@@ -204,7 +221,10 @@ function mudarAdminAba(nomeAba, botao) {
     document.querySelectorAll('.admin-tela').forEach((s) => s.classList.remove('ativa'));
     document.querySelectorAll('.admin-nav button').forEach((b) => b.classList.remove('ativo'));
     document.getElementById(`admin-${nomeAba}`).classList.add('ativa');
-    if (botao) botao.classList.add('ativo');
+    if (botao) {
+        botao.classList.add('ativo');
+        posicionarIndicadorAba(botao);
+    }
     carregarConteudoAdminAba(nomeAba);
 }
 
@@ -231,7 +251,18 @@ function iniciarBotoesAdmin() {
 
     document.getElementById('banco-mes')?.addEventListener('change', () => bancoHoras.renderizarGraficoBanco());
     document.getElementById('banco-colaborador')?.addEventListener('change', () => bancoHoras.renderizarGraficoBanco());
+    // O menu muda de orientação conforme a largura: o indicador precisa ser
+    // reposicionado, senão fica "preso" onde estava antes do redimensionamento.
     window.addEventListener('resize', () => {
+        posicionarIndicadorAba(document.querySelector('.admin-nav button.ativo'));
+        if (document.getElementById('admin-banco-horas')?.classList.contains('ativa')) {
+            bancoHoras.renderizarGraficoBanco();
+        }
+    });
+
+    // Os gráficos são desenhados em canvas e leem as cores do CSS na hora do traço:
+    // trocar o tema exige redesenhar, senão ficam com a paleta antiga.
+    document.addEventListener('tema-alterado', () => {
         if (document.getElementById('admin-banco-horas')?.classList.contains('ativa')) {
             bancoHoras.renderizarGraficoBanco();
         }
@@ -346,7 +377,9 @@ function iniciarFechamentoModais() {
 /* ===================== Bootstrap ===================== */
 
 async function iniciar() {
+    aplicarTemaSalvo();   // antes de qualquer render, para não piscar o tema errado
     montarLogos();
+    montarAlternadores();
     iniciarFechamentoModais();
     try {
         if (ehModoAdmin) {

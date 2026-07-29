@@ -13,7 +13,7 @@
 export const BRAND = {
     nome: 'Ponto Marine Shop',
     empresa: 'Marine Shop',
-    logoUrl: 'img/logo-marine-shop-dark.png',
+    logoUrl: '/img/logo-marine-shop-dark.png',
     monograma: 'MS'
 };
 

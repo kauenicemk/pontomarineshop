@@ -29,7 +29,7 @@ export async function carregarDashboard() {
     try {
         r = await api.resumoDoDia();
     } catch (e) {
-        container.innerHTML = `<p style="color:#ef4444">${escapeHtml(e.message)}</p>`;
+        container.innerHTML = `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
         return;
     }
 

@@ -27,7 +27,7 @@ function linhaRegistro(r) {
             <td>
                 <div class="config-row-acoes">
                     <button class="action-btn btn-salvar-hora">Salvar hora</button>
-                    <button class="action-btn btn-apagar-registro" style="border-color:rgba(242,84,91,.4); color:var(--vermelho);">Apagar</button>
+                    <button class="action-btn btn-apagar-registro" style="border-color:var(--borda-perigo); color:var(--vermelho);">Apagar</button>
                 </div>
             </td>
         </tr>`;

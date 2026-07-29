@@ -6,7 +6,7 @@ import { confirmar } from '../confirmar.js';
 const ROTULOS_STATUS = {
     ativa: { texto: 'De férias agora', cor: 'var(--verde)' },
     futura: { texto: 'Agendada', cor: 'var(--azul)' },
-    encerrada: { texto: 'Encerrada', cor: 'var(--text-muted)' }
+    encerrada: { texto: 'Encerrada', cor: 'var(--texto-mudo)' }
 };
 
 function formatarData(dataISO) {
@@ -25,23 +25,23 @@ export function setFuncionarios(funcionarios) {
 
 export async function carregarFerias() {
     const tbody = document.getElementById('lista-ferias');
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted)">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--texto-mudo)">Carregando...</td></tr>';
 
     let lista;
     try {
         lista = await api.listarFerias();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171">${escapeHtml(e.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--vermelho)">${escapeHtml(e.message)}</td></tr>`;
         return;
     }
 
     if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted)">Nenhuma férias registrada ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--texto-mudo)">Nenhuma férias registrada ainda.</td></tr>';
         return;
     }
 
     tbody.innerHTML = lista.map((f) => {
-        const situacao = ROTULOS_STATUS[f.status] || { texto: f.status, cor: 'var(--text-muted)' };
+        const situacao = ROTULOS_STATUS[f.status] || { texto: f.status, cor: 'var(--texto-mudo)' };
         return `
             <tr>
                 <td>${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</td>

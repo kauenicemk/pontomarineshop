@@ -35,13 +35,13 @@ function linhaGrupo(grupo, cfg) {
 
 export async function renderizarAbaConfig() {
     const container = document.getElementById('lista-config-horarios');
-    container.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+    container.innerHTML = '<p style="color:var(--texto-mudo); font-size:13px;">Carregando...</p>';
 
     let funcionarios;
     try {
         funcionarios = await api.listarFuncionariosTodos();
     } catch (e) {
-        container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
+        container.innerHTML = e.message === 'cancelado' ? '' : `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
         return;
     }
 
@@ -63,7 +63,7 @@ export async function renderizarAbaConfig() {
             <div class="config-row-acoes" style="margin-bottom:12px;">
                 ${f.regime === 'ESTAGIARIO' ? '<button class="action-btn btn-efetivar" style="width:auto; padding:6px 12px; margin:0;">Efetivar (virar CLT)</button>' : ''}
                 ${f.ativo
-                    ? '<button class="action-btn btn-demitir" style="width:auto; padding:6px 12px; margin:0; border-color:rgba(242,84,91,.4); color:var(--vermelho);">Demitir</button>'
+                    ? '<button class="action-btn btn-demitir" style="width:auto; padding:6px 12px; margin:0; border-color:var(--borda-perigo); color:var(--vermelho);">Demitir</button>'
                     : '<button class="action-btn btn-readmitir" style="width:auto; padding:6px 12px; margin:0;">Readmitir</button>'}
             </div>
 
@@ -83,10 +83,10 @@ export async function renderizarAbaConfig() {
             </div>
 
             <div class="config-row-campos">
-                <label>Data de admissão <span title="Usada para calcular os períodos de férias">ℹ️</span>
+                <label>Data de admissão 
                     <input type="date" class="input-admissao" value="${escapeHtml(f.data_admissao || '')}">
                 </label>
-                <label>Salário-base (R$) <span title="Usado para converter hora extra/noturno de % em R$">ℹ️</span>
+                <label>Salário-base (R$) 
                     <input type="number" min="0" step="0.01" class="input-salario" value="${f.salario_base ?? ''}" placeholder="opcional" style="width:100px">
                 </label>
                 <label>Cargo

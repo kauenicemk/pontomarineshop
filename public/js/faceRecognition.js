@@ -6,22 +6,52 @@
  * manual — o reconhecimento facial é sempre um atalho opcional, nunca um bloqueio.
  */
 
-const CAMINHO_MODELOS = 'vendor/face-api/models';
+const CAMINHO_MODELOS = '/vendor/face-api/models';
+const CAMINHO_LIB = '/vendor/face-api/face-api.min.js';
 
 let modelosCarregados = false;
 let promessaCarregamento = null;
+let promessaLib = null;
+
+/**
+ * Carrega a biblioteca SOB DEMANDA. Antes ela vinha numa tag <script> no HTML, o que
+ * baixava 650 KB em toda abertura do sistema — inclusive no painel administrativo, onde
+ * o reconhecimento facial só é usado na aba Biometria. Agora o arquivo só é buscado
+ * quando alguém realmente vai usar a câmera.
+ */
+function carregarBiblioteca() {
+    if (window.faceapi) return Promise.resolve(true);
+    if (promessaLib) return promessaLib;
+
+    promessaLib = new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = CAMINHO_LIB;
+        script.async = true;
+        script.onload = () => resolve(!!window.faceapi);
+        script.onerror = () => {
+            console.warn(`Não foi possível carregar ${CAMINHO_LIB}. Rode "npm run setup:biometria". Reconhecimento facial desativado.`);
+            resolve(false);
+        };
+        document.head.appendChild(script);
+    });
+    return promessaLib;
+}
 
 export function carregarModelos() {
     if (modelosCarregados) return Promise.resolve(true);
-    if (promessaCarregamento) return promessaCarregamento;
+    // A memoização precisa acontecer ANTES do primeiro await: o totem e a aba de
+    // biometria podem pedir os modelos ao mesmo tempo, e sem isso os ~7 MB seriam
+    // baixados duas vezes.
+    if (!promessaCarregamento) promessaCarregamento = carregarModelosAgora();
+    return promessaCarregamento;
+}
 
-    if (typeof window.faceapi === 'undefined') {
-        console.warn('face-api.js não encontrado (public/vendor/face-api/face-api.min.js ausente). Reconhecimento facial desativado.');
-        return Promise.resolve(false);
-    }
+async function carregarModelosAgora() {
+    const libOk = await carregarBiblioteca();
+    if (!libOk) return false;
 
     const faceapi = window.faceapi;
-    promessaCarregamento = Promise.all([
+    return Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(CAMINHO_MODELOS),
         faceapi.nets.faceLandmark68Net.loadFromUri(CAMINHO_MODELOS),
         faceapi.nets.faceRecognitionNet.loadFromUri(CAMINHO_MODELOS)
@@ -32,8 +62,6 @@ export function carregarModelos() {
         console.warn('Não foi possível carregar os modelos de reconhecimento facial:', erro);
         return false;
     });
-
-    return promessaCarregamento;
 }
 
 export function modelosProntos() {

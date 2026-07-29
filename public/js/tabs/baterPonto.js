@@ -329,7 +329,7 @@ async function tentarReconhecer(video) {
         }
 
         if (candidatoContagem >= FRAMES_PARA_CONFIRMAR) {
-            desenharContorno(video, deteccao.box, '#22c55e');
+            desenharContorno(video, deteccao.box, 'var(--verde)');
             mostrarReconhecido(resultado);
         }
     } catch (e) {
@@ -363,7 +363,7 @@ async function registrarPontoNoModal(tipo) {
     limparContorno();
     const status = document.getElementById('status-reconhecimento');
     status.style.display = 'block';
-    status.textContent = `✅ ${tipo} registrado para ${registro.nome} às ${registro.hora}!`;
+    status.textContent = `${tipo} registrado para ${registro.nome} às ${registro.hora}!`;
 
     setTimeout(() => {
         if (estadoModal === 'registrando') voltarParaBusca();

@@ -51,7 +51,7 @@ export async function carregarConfigHorasExtras() {
             <div class="config-row" data-tipo="${r.tipo}">
                 <span>${escapeHtml(rotulos[r.tipo] || r.tipo)}</span>
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <label style="font-size:12px; color:var(--text-muted)">Percentual:
+                    <label style="font-size:12px; color:var(--texto-mudo)">Percentual:
                         <input type="number" min="0" max="500" step="5" class="input-percentual" value="${Math.round(r.percentual * 100)}" style="width:70px"> %
                     </label>
                     <button class="action-btn btn-salvar-percentual" style="width:auto; padding:6px 12px; margin:0;">Salvar</button>
@@ -73,7 +73,7 @@ export async function carregarConfigHorasExtras() {
             });
         });
     } catch (e) {
-        if (e.message !== 'cancelado') container.innerHTML = `<p style="color:#f87171">${escapeHtml(e.message)}</p>`;
+        if (e.message !== 'cancelado') container.innerHTML = `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
     }
 }
 
@@ -171,7 +171,7 @@ export async function carregarListaAdmins() {
                 <td>${escapeHtml((a.criado_em || '').split(' ')[0])}</td>
                 <td>${motivo
                     ? `<span class="nota-rodape" style="margin:0" title="${escapeHtml(motivo)}">—</span>`
-                    : `<button class="action-btn btn-remover-admin" data-id="${a.id}" data-nome="${escapeHtml(a.nome)}" style="border-color:rgba(242,84,91,.4); color:var(--vermelho);">Excluir</button>`}
+                    : `<button class="action-btn btn-remover-admin" data-id="${a.id}" data-nome="${escapeHtml(a.nome)}" style="border-color:var(--borda-perigo); color:var(--vermelho);">Excluir</button>`}
                 </td>
             </tr>`;
         }).join('')}</tbody>

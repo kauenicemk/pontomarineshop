@@ -264,14 +264,10 @@
         <section id="admin-gestor" class="admin-tela">
             <h1 class="admin-secao-titulo">Painel do Gestor</h1>
             <p class="admin-secao-subtitulo">Relatório consolidado, ajustes manuais e histórico geral</p>
+            <div class="layout-painel">
+            <div>
             <div class="card">
                 <h2>Relatório Consolidado</h2>
-                <div class="filtros">
-                    <label>De <input type="date" id="filtro-inicio"></label>
-                    <label>Até <input type="date" id="filtro-fim"></label>
-                    <button class="btn btn-principal" id="btn-filtrar-gestor" style="margin:0;">Filtrar</button>
-                    <button class="btn btn-secundario" id="btn-exportar-csv" style="margin:0;">Exportar CSV</button>
-                </div>
                 <div class="tabela-wrap">
                     <table>
                         <thead>
@@ -292,7 +288,7 @@
                     o horário, apagar um registro errado ou lançar um que faltou. Toda alteração exige
                     justificativa e fica registrada no log de auditoria.
                 </p>
-                <div class="filtros">
+                <div class="filtros filtros-editor">
                     <label>Funcionário
                         <select id="select-f-ajuste"></select>
                     </label>
@@ -305,6 +301,22 @@
             <div class="card">
                 <h2>Histórico Geral (por dia)</h2>
                 <div id="espaco-gavetas"></div>
+            </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Período do relatório</h2>
+                    <div class="filtros">
+                        <label>De <input type="date" id="filtro-inicio"></label>
+                        <label>Até <input type="date" id="filtro-fim"></label>
+                    </div>
+                    <div class="painel-acoes" style="margin-top:14px;">
+                        <button class="btn btn-principal" id="btn-filtrar-gestor">Filtrar</button>
+                        <button class="btn btn-secundario" id="btn-exportar-csv">Exportar CSV</button>
+                    </div>
+                </div>
+            </aside>
             </div>
         </section>
 
@@ -329,17 +341,27 @@
                 A métrica muda conforme o regime: banco de horas para estagiário, horas extras para CLT
                 e horas trabalhadas para PJ.
             </p>
-            <div class="card">
-                <div class="filtros">
-                    <label>Mês <input type="month" id="banco-mes"></label>
-                    <label>Colaborador <select id="banco-colaborador"></select></label>
+            <div class="layout-painel">
+            <div>
+                <div class="card">
+                    <div id="banco-resumo-individual"></div>
+                    <div class="canvas-wrap">
+                        <canvas id="grafico-banco-horas"></canvas>
+                        <div id="banco-tooltip" class="banco-tooltip" style="display:none;"></div>
+                    </div>
+                    <p id="banco-horas-legenda" class="nota-rodape"></p>
                 </div>
-                <div id="banco-resumo-individual"></div>
-                <div class="canvas-wrap">
-                    <canvas id="grafico-banco-horas"></canvas>
-                    <div id="banco-tooltip" class="banco-tooltip" style="display:none;"></div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Período e colaborador</h2>
+                    <div class="filtros">
+                        <label>Mês <input type="month" id="banco-mes"></label>
+                        <label>Colaborador <select id="banco-colaborador"></select></label>
+                    </div>
                 </div>
-                <p id="banco-horas-legenda" class="nota-rodape"></p>
+            </aside>
             </div>
         </section>
 
@@ -347,14 +369,10 @@
         <section id="admin-individual" class="admin-tela">
             <h1 class="admin-secao-titulo">Relatório Individual</h1>
             <div class="aviso-info">Saldo, atrasos, horas extras (60% e 100% separadas), horas noturnas e faltas de UM colaborador no mês.</div>
+
+            <div class="layout-painel">
+            <div>
             <div class="card">
-                <div class="filtros">
-                    <label>Colaborador <select id="individual-colaborador"></select></label>
-                    <label>Mês <input type="month" id="individual-mes"></label>
-                    <button class="btn btn-principal" id="btn-filtrar-individual" style="margin:0;">Gerar Relatório</button>
-                    <button class="btn btn-secundario" id="btn-exportar-individual" style="margin:0;">Exportar CSV</button>
-                    <button class="btn btn-secundario" id="btn-ver-espelho-individual" style="margin:0;">Ver/Imprimir Espelho</button>
-                </div>
                 <div id="individual-resumo"></div>
             </div>
             <div class="card">
@@ -366,22 +384,32 @@
                     </table>
                 </div>
             </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Filtros</h2>
+                    <div class="filtros">
+                        <label>Colaborador <select id="individual-colaborador"></select></label>
+                        <label>Mês <input type="month" id="individual-mes"></label>
+                    </div>
+                    <div class="painel-acoes" style="margin-top:14px;">
+                        <button class="btn btn-principal" id="btn-filtrar-individual">Gerar relatório</button>
+                        <hr class="painel-divisor">
+                        <button class="btn btn-secundario" id="btn-exportar-individual">Exportar CSV</button>
+                        <button class="btn btn-secundario" id="btn-ver-espelho-individual">Ver / imprimir espelho</button>
+                    </div>
+                </div>
+            </aside>
+            </div>
         </section>
 
         <!-- ---------- Férias (simplificada) ---------- -->
         <section id="admin-ferias" class="admin-tela">
             <h1 class="admin-secao-titulo">Férias</h1>
             <div class="aviso-info">Registre o período de férias direto — sem cálculo de período aquisitivo. Os dias ficam automaticamente marcados como férias no histórico do funcionário.</div>
-            <div class="card">
-                <h2>Registrar Férias</h2>
-                <div class="filtros">
-                    <label>Colaborador <select id="ferias-funcionario"></select></label>
-                    <label>Início <input type="date" id="ferias-data-inicio"></label>
-                    <label>Fim <input type="date" id="ferias-data-fim"></label>
-                    <label style="flex:1; min-width:180px;">Observação <input type="text" class="campo" id="ferias-observacao" placeholder="opcional"></label>
-                    <button class="btn btn-principal" id="btn-registrar-ferias" style="margin:0;">Registrar</button>
-                </div>
-            </div>
+            <div class="layout-painel">
+            <div>
             <div class="card">
                 <h2>Períodos registrados</h2>
                 <div class="tabela-wrap">
@@ -391,17 +419,38 @@
                     </table>
                 </div>
             </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Registrar férias</h2>
+                    <div class="filtros">
+                        <label>Colaborador <select id="ferias-funcionario"></select></label>
+                        <label>Início <input type="date" id="ferias-data-inicio"></label>
+                        <label>Fim <input type="date" id="ferias-data-fim"></label>
+                        <label>Observação <input type="text" class="campo" id="ferias-observacao" placeholder="opcional"></label>
+                    </div>
+                    <button class="btn btn-principal" id="btn-registrar-ferias" style="margin-top:14px;">Registrar</button>
+                </div>
+            </aside>
+            </div>
         </section>
 
         <!-- ---------- Indicadores (People Analytics) ---------- -->
         <section id="admin-indicadores" class="admin-tela">
             <h1 class="admin-secao-titulo">Indicadores</h1>
-            <div class="card">
-                <div class="filtros">
-                    <label>Mês <input type="month" id="indicadores-mes"></label>
-                    <button class="btn btn-principal" id="btn-filtrar-indicadores" style="margin:0;">Atualizar</button>
-                </div>
-                <div id="indicadores-conteudo"></div>
+            <div class="layout-painel">
+                <div class="card"><div id="indicadores-conteudo"></div></div>
+
+                <aside class="painel-lateral">
+                    <div class="card">
+                        <h2>Período</h2>
+                        <div class="filtros">
+                            <label>Mês <input type="month" id="indicadores-mes"></label>
+                        </div>
+                        <button class="btn btn-principal" id="btn-filtrar-indicadores" style="margin-top:14px;">Atualizar</button>
+                    </div>
+                </aside>
             </div>
         </section>
 
@@ -409,28 +458,10 @@
         <section id="admin-faltas" class="admin-tela">
             <h1 class="admin-secao-titulo">Faltas</h1>
             <div class="aviso-info">Compara os dias de trabalho de cada funcionário (segundo a jornada configurada individualmente por dia da semana) contra quem realmente bateu ponto ou tem ausência justificada.</div>
+            <div class="layout-painel">
+            <div>
             <div class="card">
-                <div class="filtros">
-                    <label>Mês <input type="month" id="faltas-mes"></label>
-                    <label>Turno
-                        <select id="faltas-turno">
-                            <option value="">Todos os turnos</option>
-                            <option value="manha_tarde">Manhã/Tarde</option>
-                            <option value="tarde_noite">Tarde/Noite</option>
-                        </select>
-                    </label>
-                    <button class="btn btn-principal" id="btn-filtrar-faltas" style="margin:0;">Calcular Faltas</button>
-                </div>
-
-                <div class="barra-lote escondido" id="faltas-barra-lote">
-                    <label class="label-checkbox">
-                        <input type="checkbox" id="faltas-selecionar-todos">
-                        <b>Selecionar todas</b>
-                    </label>
-                    <span class="contador-selecao" id="faltas-contador">Nenhuma falta selecionada</span>
-                    <button class="btn btn-principal" id="btn-justificar-lote" style="margin:0;" disabled>Justificar selecionadas</button>
-                </div>
-
+                <h2>Faltas não justificadas</h2>
                 <div class="tabela-wrap">
                     <table>
                         <thead><tr><th style="width:34px;"></th><th>Colaborador</th><th>Data</th><th>Situação</th><th></th></tr></thead>
@@ -449,28 +480,45 @@
                     </table>
                 </div>
             </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Período</h2>
+                    <div class="filtros">
+                        <label>Mês <input type="month" id="faltas-mes"></label>
+                        <label>Turno
+                            <select id="faltas-turno">
+                                <option value="">Todos os turnos</option>
+                                <option value="manha_tarde">Manhã/Tarde</option>
+                                <option value="tarde_noite">Tarde/Noite</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="painel-acoes" style="margin-top:14px;">
+                        <button class="btn btn-principal" id="btn-filtrar-faltas">Calcular faltas</button>
+                    </div>
+                </div>
+
+                <div class="card barra-lote escondido" id="faltas-barra-lote">
+                    <h2>Justificar em massa</h2>
+                    <label class="label-checkbox" style="margin-bottom:10px;">
+                        <input type="checkbox" id="faltas-selecionar-todos">
+                        <b>Selecionar todas</b>
+                    </label>
+                    <p class="contador-selecao" id="faltas-contador">Nenhuma falta selecionada</p>
+                    <button class="btn btn-principal" id="btn-justificar-lote" style="margin-top:12px;" disabled>Justificar selecionadas</button>
+                </div>
+            </aside>
+            </div>
         </section>
 
         <!-- ---------- Feriados ---------- -->
         <section id="admin-feriados" class="admin-tela">
             <h1 class="admin-secao-titulo">Feriados</h1>
             <div class="aviso-info">Feriados cadastrados aqui zeram a meta do dia automaticamente e fazem qualquer trabalho nesse dia contar como hora extra de 100%.</div>
-            <div class="card">
-                <h2>Cadastrar Feriado</h2>
-                <div class="filtros">
-                    <label>Data <input type="date" id="feriado-data"></label>
-                    <label>Nome <input type="text" class="campo" id="feriado-nome" placeholder="Ex: Dia da Independência"></label>
-                    <label>Abrangência
-                        <select id="feriado-abrangencia">
-                            <option value="nacional">Nacional</option>
-                            <option value="estadual">Estadual</option>
-                            <option value="municipal">Municipal</option>
-                            <option value="empresa" selected>Empresa</option>
-                        </select>
-                    </label>
-                    <button class="btn btn-principal" id="btn-salvar-feriado" style="margin:0;">Cadastrar</button>
-                </div>
-            </div>
+            <div class="layout-painel">
+            <div>
             <div class="card">
                 <h2>Feriados Cadastrados</h2>
                 <div class="tabela-wrap">
@@ -479,6 +527,27 @@
                         <tbody id="lista-feriados"></tbody>
                     </table>
                 </div>
+            </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Cadastrar feriado</h2>
+                    <div class="filtros">
+                        <label>Data <input type="date" id="feriado-data"></label>
+                        <label>Nome <input type="text" class="campo" id="feriado-nome" placeholder="Ex: Independência"></label>
+                        <label>Abrangência
+                            <select id="feriado-abrangencia">
+                                <option value="nacional">Nacional</option>
+                                <option value="estadual">Estadual</option>
+                                <option value="municipal">Municipal</option>
+                                <option value="empresa" selected>Empresa</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button class="btn btn-principal" id="btn-salvar-feriado" style="margin-top:14px;">Cadastrar</button>
+                </div>
+            </aside>
             </div>
         </section>
 
@@ -489,19 +558,32 @@
                 Regime (efetivar estagiário), tolerância/flexibilidade de almoço e a jornada de cada
                 funcionário (6 dias da semana) ficam todos aqui.
             </div>
-            <div class="card">
-                <h2>Funcionários</h2>
-                <div class="filtros">
-                    <label>Buscar <input type="text" class="campo" id="config-busca" placeholder="Nome do colaborador" autocomplete="off" style="width:200px;"></label>
-                    <label>Turno
-                        <select id="config-turno">
-                            <option value="">Todos os turnos</option>
-                            <option value="manha_tarde">Manhã/Tarde</option>
-                            <option value="tarde_noite">Tarde/Noite</option>
-                        </select>
-                    </label>
+            <div class="layout-painel">
+                <div class="card">
+                    <h2>Funcionários</h2>
+                    <div id="lista-config-horarios"></div>
                 </div>
-                <div id="lista-config-horarios"></div>
+
+                <aside class="painel-lateral">
+                    <div class="card">
+                        <h2>Filtrar</h2>
+                        <div class="filtros">
+                            <label>Buscar <input type="text" class="campo" id="config-busca" placeholder="Nome do colaborador" autocomplete="off"></label>
+                            <label>Turno
+                                <select id="config-turno">
+                                    <option value="">Todos os turnos</option>
+                                    <option value="manha_tarde">Manhã/Tarde</option>
+                                    <option value="tarde_noite">Tarde/Noite</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Resumo da equipe</h2>
+                        <div id="config-resumo-equipe"></div>
+                    </div>
+                </aside>
             </div>
         </section>
 
@@ -599,16 +681,9 @@
                 Cada ação administrativa fica registrada com a conta que a executou. Tentativas de login
                 que falharam também aparecem aqui. Os registros não podem ser editados nem apagados pela interface.
             </div>
+            <div class="layout-painel">
+            <div>
             <div class="card">
-                <div class="filtros">
-                    <label>De <input type="date" id="auditoria-inicio"></label>
-                    <label>Até <input type="date" id="auditoria-fim"></label>
-                    <label>Ação
-                        <select id="auditoria-acao"><option value="">Todas as ações</option></select>
-                    </label>
-                    <button class="btn btn-principal" id="btn-filtrar-auditoria" style="margin:0;">Filtrar</button>
-                    <button class="btn btn-secundario" id="btn-exportar-auditoria" style="margin:0;">Exportar CSV</button>
-                </div>
                 <p class="nota-rodape" id="auditoria-total" style="margin:0 0 10px;"></p>
                 <div class="tabela-wrap">
                     <table>
@@ -616,6 +691,25 @@
                         <tbody id="lista-auditoria"></tbody>
                     </table>
                 </div>
+            </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Filtros</h2>
+                    <div class="filtros">
+                        <label>De <input type="date" id="auditoria-inicio"></label>
+                        <label>Até <input type="date" id="auditoria-fim"></label>
+                        <label>Ação
+                            <select id="auditoria-acao"><option value="">Todas as ações</option></select>
+                        </label>
+                    </div>
+                    <div class="painel-acoes" style="margin-top:14px;">
+                        <button class="btn btn-principal" id="btn-filtrar-auditoria">Filtrar</button>
+                        <button class="btn btn-secundario" id="btn-exportar-auditoria">Exportar CSV</button>
+                    </div>
+                </div>
+            </aside>
             </div>
         </section>
 

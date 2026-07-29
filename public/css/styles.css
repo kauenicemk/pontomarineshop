@@ -518,7 +518,70 @@ tbody tr:hover { background: var(--hover-sutil); }
 .admin-rodape-sidebar button:hover { border-color: var(--vermelho); color: var(--vermelho); }
 .admin-rodape-sidebar .icone-svg { width: 15px; height: 15px; }
 
-.admin-conteudo { flex: 1; padding: 28px 32px; max-width: 1280px; min-width: 0; }
+/* O conteúdo era limitado a 1280px e alinhado à esquerda: num monitor largo sobrava
+   uma faixa morta à direita. Agora ele é centralizado e mais largo — e as telas densas
+   usam esse espaço com um painel de controles (ver .layout-painel logo abaixo). */
+.admin-conteudo { flex: 1; padding: 28px 32px; max-width: 1660px; margin: 0 auto; width: 100%; min-width: 0; }
+
+/* ===================== Painel lateral de controles =====================
+   Telas com tabela larga + formulário ficavam com os controles no meio da página,
+   empurrando os dados para baixo. Aqui os controles vão para uma coluna fixa à
+   direita e a tabela passa a ocupar a largura toda. Abaixo de 1200px o painel volta
+   para cima do conteúdo, na ordem natural de leitura. */
+
+.layout-painel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+    align-items: start;
+}
+.layout-painel > .painel-lateral { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.painel-lateral .card { margin-bottom: 0; padding: 16px 18px; }
+.painel-lateral h2 { font-size: 14px; margin: 0 0 12px; }
+/* Dentro do painel os filtros empilham: a coluna é estreita demais para lado a lado. */
+.painel-lateral .filtros { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 0; }
+.painel-lateral .filtros label { width: 100%; }
+.painel-lateral .filtros .btn,
+.painel-lateral .btn { width: 100%; }
+.painel-lateral .filtros input,
+.painel-lateral .filtros select,
+.painel-lateral .campo { width: 100% !important; }
+
+.painel-acoes { display: flex; flex-direction: column; gap: 8px; }
+
+/* Resumo de equipe dentro do painel: pares rótulo/valor em linhas discretas */
+.resumo-linha {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px;
+}
+.resumo-linha:last-child { border-bottom: none; }
+.resumo-linha span:first-child { color: var(--texto-mudo); }
+.resumo-linha b { font-family: var(--fonte-display); font-variant-numeric: tabular-nums; }
+.resumo-titulo {
+    font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--texto-sutil); margin: 14px 0 2px;
+}
+.resumo-titulo:first-child { margin-top: 0; }
+/* Pendência de cadastro: clicável, leva até a gaveta da pessoa */
+.resumo-pendencia {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    color: var(--amarelo); font-size: 12px; font-family: inherit; padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+.resumo-pendencia:last-child { border-bottom: none; }
+.resumo-pendencia:hover { color: var(--accent-texto); }
+.painel-divisor { height: 1px; background: var(--border); margin: 4px 0; border: none; }
+
+@media (max-width: 1200px) {
+    .layout-painel { grid-template-columns: 1fr; }
+    .layout-painel > .painel-lateral { position: static; order: -1; }
+    .painel-lateral .filtros { flex-direction: row; flex-wrap: wrap; align-items: end; }
+    .painel-lateral .filtros label { width: auto; }
+    .painel-lateral .filtros .btn, .painel-lateral .btn { width: auto; }
+    .painel-lateral .filtros input, .painel-lateral .filtros select { width: auto !important; }
+    .painel-acoes { flex-direction: row; flex-wrap: wrap; }
+}
 .admin-secao-titulo { font-size: 22px; margin: 0 0 4px; }
 .admin-secao-subtitulo { color: var(--texto-mudo); font-size: 13px; margin: 0 0 22px; }
 
@@ -718,14 +781,13 @@ tbody tr:hover { background: var(--hover-sutil); }
 .modal-botoes button { flex: 1; }
 .confirmar-texto { color: var(--texto-mudo); font-size: 13.5px; margin: 8px 0 4px; white-space: pre-line; }
 
-/* Ações em massa (justificar faltas) */
-.barra-lote {
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    background: var(--card-2); border: 1px solid var(--border); border-radius: var(--raio-sm);
-    padding: 10px 14px; margin-bottom: 14px;
-}
+/* Ações em massa (justificar faltas) — hoje é um card do painel lateral, que só
+   aparece quando existem faltas a justificar. Destacado em laranja porque é uma
+   ação que se abre por contexto, não um controle permanente da tela. */
+.barra-lote { border-color: var(--accent); }
 .barra-lote .label-checkbox { font-size: 13px; color: var(--texto); cursor: pointer; }
-.contador-selecao { color: var(--texto-mudo); font-size: 12.5px; flex: 1; min-width: 140px; }
+.barra-lote .btn { width: 100%; }
+.contador-selecao { color: var(--texto-mudo); font-size: 12.5px; margin: 0; }
 .check-falta, #faltas-selecionar-todos { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
 tr.selecionada { background: var(--accent-suave); }
 

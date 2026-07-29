@@ -112,6 +112,8 @@ export async function renderizarAbaConfig() {
         </div>
     `).join('');
 
+    renderizarResumoEquipe(funcionarios);
+
     // Gavetas: cada funcionário abre/fecha ao tocar no cabeçalho (fechadas por padrão).
     iniciarFiltros();
     aplicarFiltros();
@@ -141,6 +143,82 @@ export async function renderizarAbaConfig() {
     container.querySelectorAll('.btn-copiar-jornada').forEach((btn) => {
         btn.addEventListener('click', (ev) => copiarSegundaParaOutrosDias(ev.target.closest('.config-row-funcionario')));
     });
+}
+
+/* ===================== Resumo da equipe (painel lateral) ===================== */
+
+/**
+ * Composição da equipe + o que falta preencher. As pendências não são enfeite:
+ * sem salário-base o sistema não converte hora extra em R$, e sem jornada marcada
+ * a pessoa nunca aparece como falta nem como atrasada. Antes isso só se descobria
+ * abrindo funcionário por funcionário.
+ */
+function renderizarResumoEquipe(funcionarios) {
+    const alvo = document.getElementById('config-resumo-equipe');
+    if (!alvo) return;
+
+    const ativos = funcionarios.filter((f) => f.ativo);
+    const porRegime = { CLT: 0, ESTAGIARIO: 0, PJ: 0 };
+    const porTurno = { manha_tarde: 0, tarde_noite: 0 };
+    ativos.forEach((f) => {
+        porRegime[f.regime] = (porRegime[f.regime] || 0) + 1;
+        porTurno[turnoDoFuncionario(f)] += 1;
+    });
+
+    const temJornada = (f) => Object.values(f.jornada || {}).some((d) => d && d.trabalha);
+    const pendencias = [
+        { rotulo: 'sem jornada configurada', lista: ativos.filter((f) => !temJornada(f)) },
+        { rotulo: 'sem salário-base', lista: ativos.filter((f) => f.salario_base == null) },
+        { rotulo: 'sem data de admissão', lista: ativos.filter((f) => !f.data_admissao) }
+    ].filter((p) => p.lista.length > 0);
+
+    const linha = (rotulo, valor) => `<div class="resumo-linha"><span>${escapeHtml(rotulo)}</span><b>${valor}</b></div>`;
+
+    alvo.innerHTML = `
+        <div class="resumo-titulo">Equipe ativa</div>
+        ${linha('Total', ativos.length)}
+        ${linha(ROTULOS_REGIME.CLT, porRegime.CLT || 0)}
+        ${linha(ROTULOS_REGIME.ESTAGIARIO, porRegime.ESTAGIARIO || 0)}
+        ${linha(ROTULOS_REGIME.PJ, porRegime.PJ || 0)}
+        ${funcionarios.length > ativos.length ? linha('Desligados', funcionarios.length - ativos.length) : ''}
+
+        <div class="resumo-titulo">Por turno</div>
+        ${linha(ROTULOS_TURNO.manha_tarde, porTurno.manha_tarde)}
+        ${linha(ROTULOS_TURNO.tarde_noite, porTurno.tarde_noite)}
+
+        <div class="resumo-titulo">Cadastros incompletos</div>
+        ${pendencias.length
+            ? pendencias.map((p) => `
+                <button type="button" class="resumo-pendencia" data-ids="${p.lista.map((f) => f.id).join(',')}">
+                    ${p.lista.length} ${escapeHtml(p.rotulo)}
+                </button>`).join('')
+            : '<p class="nota-rodape" style="margin:6px 0 0;">Tudo preenchido.</p>'}
+    `;
+
+    alvo.querySelectorAll('.resumo-pendencia').forEach((btn) => {
+        btn.addEventListener('click', () => destacarPendentes(btn.dataset.ids.split(',')));
+    });
+}
+
+/** Filtra a lista para as pessoas da pendência e abre a gaveta de cada uma. */
+function destacarPendentes(ids) {
+    const conjunto = new Set(ids);
+    document.getElementById('config-busca').value = '';
+    document.getElementById('config-turno').value = '';
+
+    document.querySelectorAll('.config-row-funcionario').forEach((linha) => {
+        const alvo = conjunto.has(linha.dataset.id);
+        linha.classList.toggle('escondido', !alvo);
+        const corpo = linha.querySelector('.config-gaveta-corpo');
+        const header = linha.querySelector('.config-gaveta-header');
+        if (corpo && header) {
+            corpo.classList.toggle('escondido', !alvo);
+            header.classList.toggle('aberta', alvo);
+            header.setAttribute('aria-expanded', String(alvo));
+        }
+    });
+
+    document.querySelector('.config-row-funcionario:not(.escondido)')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* ===================== Filtros da lista (busca + turno) ===================== */

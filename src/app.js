@@ -45,6 +45,23 @@ app.use(secureHeaders({
     }
 }));
 
+// Teto de tamanho do corpo. Um POST gigante consumiria CPU do Worker à toa; o maior
+// corpo legítimo é o descritor facial (128 números, ~3 KB), então 256 KB sobra.
+const TAMANHO_MAXIMO_CORPO = 256 * 1024;
+
+app.use('/api/*', async (c, next) => {
+    const tamanho = Number(c.req.header('content-length') || 0);
+    if (tamanho > TAMANHO_MAXIMO_CORPO) {
+        return c.json({ message: 'Requisição grande demais.' }, 413);
+    }
+    await next();
+
+    // Respostas de API carregam dados pessoais (nomes, pontos, salários): nunca podem
+    // ficar em cache de navegador, proxy ou CDN.
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    c.header('Pragma', 'no-cache');
+});
+
 // Abre um contexto por requisição. O objeto é preenchido pelo adminAuth quando a
 // rota exige login — é ele que leva "quem fez" até o log de auditoria.
 app.use('*', async (c, next) => {

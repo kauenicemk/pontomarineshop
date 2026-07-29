@@ -49,9 +49,31 @@ test('saída antes da entrada não gera tempo negativo', () => {
 
 /* ===================== Atraso ===================== */
 
-test('atraso de entrada é a diferença para o horário combinado', () => {
+test('atraso de entrada acima da tolerância conta integralmente', () => {
     const pontos = { ...diaCompleto, ENTRADA: '08:12' };
     assert.strictEqual(calc.calcularAtrasoEntradaMinutos(pontos, QUARTA, JORNADA_PADRAO), 12);
+});
+
+test('atraso de entrada DENTRO da tolerância (ate 10 min) nao conta como atraso', () => {
+    for (const minutos of [1, 5, 10]) {
+        const hora = `08:${String(minutos).padStart(2, '0')}`;
+        const pontos = { ...diaCompleto, ENTRADA: hora };
+        assert.strictEqual(
+            calc.calcularAtrasoEntradaMinutos(pontos, QUARTA, JORNADA_PADRAO), 0,
+            `chegar as ${hora} esta dentro da tolerancia e nao deveria gerar atraso`
+        );
+    }
+});
+
+test('11 minutos ja passa da tolerância e conta os 11, não só o excedente', () => {
+    const pontos = { ...diaCompleto, ENTRADA: '08:11' };
+    assert.strictEqual(calc.calcularAtrasoEntradaMinutos(pontos, QUARTA, JORNADA_PADRAO), 11);
+});
+
+test('atraso bruto de entrada é registrado mesmo quando tolerado', () => {
+    const pontos = { ...diaCompleto, ENTRADA: '08:07' };
+    assert.strictEqual(calc.calcularAtrasoEntradaBruto(pontos, QUARTA, JORNADA_PADRAO), 7);
+    assert.strictEqual(calc.calcularAtrasoEntradaMinutos(pontos, QUARTA, JORNADA_PADRAO), 0);
 });
 
 test('chegar adiantado não gera atraso negativo', () => {
@@ -63,9 +85,23 @@ test('dia sem expediente configurado não gera atraso', () => {
     assert.strictEqual(calc.calcularAtrasoEntradaMinutos(diaCompleto, SABADO, JORNADA_PADRAO), 0);
 });
 
-test('almoço mais longo que a tolerância vira atraso', () => {
-    const pontos = { ...diaCompleto, ALMOCO_RETORNO: '13:20' }; // 80 min de almoço
-    assert.strictEqual(calc.calcularAtrasoAlmocoMinutos(pontos, 60, false), 20);
+test('almoço no tempo combinado não gera atraso', () => {
+    assert.strictEqual(calc.calcularAtrasoAlmocoMinutos(diaCompleto, 60, false), 0); // 60 min exatos
+});
+
+test('almoço com 1 minuto a mais está na tolerância', () => {
+    const pontos = { ...diaCompleto, ALMOCO_RETORNO: '13:01' }; // 61 min
+    assert.strictEqual(calc.calcularAtrasoAlmocoMinutos(pontos, 60, false), 0);
+});
+
+test('almoço acima de 1 minuto de folga desconta o excedente', () => {
+    const pontos = { ...diaCompleto, ALMOCO_RETORNO: '13:05' }; // 65 min: 5 - 1 de folga
+    assert.strictEqual(calc.calcularAtrasoAlmocoMinutos(pontos, 60, false), 4);
+});
+
+test('almoço muito longo conta o excedente inteiro menos 1 minuto', () => {
+    const pontos = { ...diaCompleto, ALMOCO_RETORNO: '13:20' }; // 80 min: 20 - 1
+    assert.strictEqual(calc.calcularAtrasoAlmocoMinutos(pontos, 60, false), 19);
 });
 
 test('almoço flexível nunca gera atraso', () => {
@@ -73,26 +109,26 @@ test('almoço flexível nunca gera atraso', () => {
     assert.strictEqual(calc.calcularAtrasoAlmocoMinutos(pontos, 60, true), 0);
 });
 
-/* ===================== Tolerância de 10 minutos no saldo ===================== */
+/* ===================== Tolerância aplicada ao saldo ===================== */
 
-test('atraso de até 10 minutos NÃO deixa o dia negativo', () => {
+test('atraso de entrada tolerado não deixa o dia negativo', () => {
     for (const atraso of [1, 5, 10]) {
         const saldo = calc.calcularSaldoMinutos(480 - atraso, 480, diaCompleto, atraso);
         assert.strictEqual(saldo, 0, `atraso de ${atraso} min deveria manter o saldo em zero`);
     }
 });
 
-test('atraso acima de 10 minutos desconta INTEGRALMENTE, não só o excedente', () => {
-    assert.strictEqual(calc.calcularSaldoMinutos(468, 480, diaCompleto, 12), -12);
-    assert.strictEqual(calc.calcularSaldoMinutos(450, 480, diaCompleto, 30), -30);
+test('atraso acima da tolerância desconta INTEGRALMENTE (nada é perdoado)', () => {
+    assert.strictEqual(calc.calcularSaldoMinutos(468, 480, diaCompleto, 0), -12);
+    assert.strictEqual(calc.calcularSaldoMinutos(450, 480, diaCompleto, 0), -30);
 });
 
-test('tolerância não vira brecha para sair mais cedo', () => {
-    // Atrasou 8 min (tolerado) mas saiu 30 min antes: perdoa só os 8 do atraso.
+test('perdão não vira brecha para sair mais cedo', () => {
+    // Atrasou 8 min (tolerado) mas saiu 30 min antes: devolve so os 8.
     assert.strictEqual(calc.calcularSaldoMinutos(450, 480, diaCompleto, 8), -22);
 });
 
-test('tolerância não cria crédito quando o saldo já é positivo', () => {
+test('perdão não cria crédito quando o saldo já é positivo', () => {
     assert.strictEqual(calc.calcularSaldoMinutos(500, 480, diaCompleto, 8), 20);
 });
 
@@ -194,7 +230,7 @@ test('violações são detectadas apenas entre dias com saída e entrada registr
 
 /* ===================== Relatório do dia (integração das regras) ===================== */
 
-test('relatório do dia junta atraso tolerado e saldo preservado', () => {
+test('relatório do dia: atraso tolerado nao aparece e nao desconta', () => {
     const dia = calc.montarRelatorioDia({
         funcionario: { id: 1, nome: 'Teste', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
         dataISO: QUARTA,
@@ -205,13 +241,14 @@ test('relatório do dia junta atraso tolerado e saldo preservado', () => {
         jornadaPorGrupo: JORNADA_PADRAO
     });
 
-    assert.strictEqual(dia.atrasoMinutos, 8, 'o atraso continua sendo contabilizado');
-    assert.strictEqual(dia.atraso, '00:08');
-    assert.strictEqual(dia.saldoMinutos, 0, 'mas o saldo do dia não fica negativo');
-    assert.strictEqual(dia.atrasoToleradoNoSaldo, true);
+    assert.strictEqual(dia.atrasoMinutos, 0, 'dentro da tolerancia: nao conta como atraso');
+    assert.strictEqual(dia.atraso, '00:00');
+    assert.strictEqual(dia.saldoMinutos, 0, 'e tambem nao desconta do saldo');
+    assert.strictEqual(dia.entradaDentroDaTolerancia, true);
+    assert.strictEqual(dia.minutosAtrasoEntradaBruto, 8, 'o atraso real fica registrado para consulta');
 });
 
-test('relatório do dia desconta atraso acima da tolerância', () => {
+test('relatório do dia: atraso acima da tolerância conta e desconta', () => {
     const dia = calc.montarRelatorioDia({
         funcionario: { id: 1, nome: 'Teste', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
         dataISO: QUARTA,
@@ -224,7 +261,40 @@ test('relatório do dia desconta atraso acima da tolerância', () => {
 
     assert.strictEqual(dia.atrasoMinutos, 25);
     assert.strictEqual(dia.saldoMinutos, -25);
-    assert.strictEqual(dia.atrasoToleradoNoSaldo, false);
+    assert.strictEqual(dia.entradaDentroDaTolerancia, false);
+});
+
+test('relatório do dia: almoço estourado conta como atraso E desconta do saldo', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'Teste', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: QUARTA,
+        // Entrou no horário, mas almoçou 70 min (10 acima do combinado, 9 acima da folga de 1)
+        pontos: { ENTRADA: '08:00', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:10', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO
+    });
+
+    assert.strictEqual(dia.atrasoAlmocoMinutos, 9, '70 min de almoco: 10 acima do combinado menos 1 de folga');
+    assert.strictEqual(dia.atrasoMinutos, 9);
+    assert.strictEqual(dia.saldoMinutos, -9, 'desconta o mesmo que conta como atraso: o minuto de folga e devolvido');
+});
+
+test('relatório do dia: entrada tolerada + almoço estourado somam corretamente', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'Teste', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: QUARTA,
+        // 5 min de atraso (tolerado) + almoco de 65 min (4 de atraso apos a folga)
+        pontos: { ENTRADA: '08:05', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:05', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO
+    });
+
+    assert.strictEqual(dia.atrasoMinutos, 4, 'so o atraso do almoco conta');
+    assert.strictEqual(dia.saldoMinutos, -4, 'atraso e desconto batem: 5 da entrada + 1 do almoco sao devolvidos');
 });
 
 test('trabalho em feriado vira hora extra de 100% sem meta', () => {
@@ -241,4 +311,30 @@ test('trabalho em feriado vira hora extra de 100% sem meta', () => {
     assert.strictEqual(dia.horas_extras.tipo, 'domingo_feriado');
     assert.strictEqual(dia.horas_extras.minutos, 240);
     assert.strictEqual(dia.horas_extras.valor, 80, '4h × R$10/h × 2 (100% de adicional)');
+});
+
+test('regra geral: o que conta como atraso e o que desconta do saldo batem', () => {
+    const cenarios = [
+        { entrada: '08:00', retorno: '13:00', esperado: 0 },
+        { entrada: '08:08', retorno: '13:00', esperado: 0 },   // entrada tolerada
+        { entrada: '08:00', retorno: '13:01', esperado: 0 },   // almoco na folga
+        { entrada: '08:08', retorno: '13:01', esperado: 0 },   // os dois tolerados
+        { entrada: '08:00', retorno: '13:06', esperado: 5 },   // 6 de almoco - 1 de folga
+        { entrada: '08:20', retorno: '13:00', esperado: 20 },  // entrada acima da tolerancia
+        { entrada: '08:20', retorno: '13:06', esperado: 25 }   // os dois estourados
+    ];
+
+    cenarios.forEach(({ entrada, retorno, esperado }) => {
+        const dia = calc.montarRelatorioDia({
+            funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+            dataISO: QUARTA,
+            pontos: { ENTRADA: entrada, ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: retorno, SAIDA: '17:00' },
+            justificativas: {},
+            ehFeriado: false,
+            percentuaisHorasExtras: PERCENTUAIS,
+            jornadaPorGrupo: JORNADA_PADRAO
+        });
+        assert.strictEqual(dia.atrasoMinutos, esperado, `atraso de ${entrada}/${retorno}`);
+        assert.strictEqual(dia.saldoMinutos, esperado === 0 ? 0 : -esperado, `saldo de ${entrada}/${retorno} deve espelhar o atraso`);
+    });
 });

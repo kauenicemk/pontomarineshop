@@ -26,7 +26,8 @@ app.post('/totem/login', async (c) => {
     await registrarAuditoria('login_totem', 'totem', null, {});
 
     const exp = Math.floor(Date.now() / 1000) + SEGUNDOS_SESSAO_TOTEM;
-    const token = await gerarToken({ tipo: 'totem', exp }, c.env);
+    const versao = await authService.versaoTokenTotem();
+    const token = await gerarToken({ tipo: 'totem', v: versao, exp }, c.env);
     return c.json({ token });
 });
 
@@ -87,7 +88,9 @@ app.post('/totem/trocar-senha', exigirAutorizacaoAdmin, async (c) => {
     const body = await c.req.json();
     const novaSenha = exigirPin(body.nova_senha, 'nova_senha');
     await authService.definirSenhaTotem(novaSenha);
-    return c.json({ message: 'Senha do totem atualizada com sucesso!' });
+    return c.json({
+        message: 'Senha do totem atualizada. Todos os tablets foram desconectados e precisam da nova senha.'
+    });
 });
 
 module.exports = app;

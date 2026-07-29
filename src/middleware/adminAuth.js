@@ -1,3 +1,4 @@
+const db = require('../db/db');
 const { verificarToken } = require('../utils/jwtAuth');
 const { definirAdminDoContexto } = require('../utils/contextoRequisicao');
 
@@ -27,7 +28,21 @@ async function exigirAutorizacaoAdmin(c, next) {
         return c.json({ message: 'Essa ação exige uma conta de administrador.' }, 403);
     }
 
-    const admin = { id: payload.sub, nome: payload.nome };
+    /**
+     * O JWT sozinho não basta: ele vale 12h e não tem como ser "cancelado". Sem esta
+     * conferência, uma conta excluída ou desativada continuaria com acesso total até o
+     * token expirar naturalmente — inclusive alguém demitido no meio do expediente.
+     * Uma consulta por requisição é barata perto do risco.
+     */
+    const conta = await db.get(
+        `SELECT id, nome, ativo FROM admins WHERE id = ?`,
+        [Number(payload.sub)]
+    );
+    if (!conta || !conta.ativo) {
+        return c.json({ message: 'Esta conta não tem mais acesso ao sistema.' }, 401);
+    }
+
+    const admin = { id: conta.id, nome: conta.nome };
     c.set('admin', admin);
     definirAdminDoContexto(admin); // leva o autor até o log de auditoria
     await next();

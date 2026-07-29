@@ -35,27 +35,58 @@ function configDoGrupoNaData(dataISO, jornadaPorGrupo) {
     return cfg;
 }
 
-/** Atraso na entrada, em minutos, comparado ao horário de entrada configurado pro dia da semana específico. */
-function calcularAtrasoEntradaMinutos(pontos, dataISO, jornadaPorGrupo) {
+/**
+ * Atraso BRUTO da entrada — quantos minutos depois do horário combinado a pessoa chegou,
+ * sem aplicar tolerância. Serve de base para o cálculo tolerado logo abaixo.
+ */
+function calcularAtrasoEntradaBruto(pontos, dataISO, jornadaPorGrupo) {
     if (!pontos.ENTRADA) return 0;
     const cfg = configDoGrupoNaData(dataISO, jornadaPorGrupo);
     if (!cfg) return 0;
+    return Math.max(0, paraMinutos(pontos.ENTRADA) - paraMinutos(cfg.horario_entrada));
+}
 
-    const diff = paraMinutos(pontos.ENTRADA) - paraMinutos(cfg.horario_entrada) - config.jornada.toleranciaAtrasoEntradaMin;
-    return Math.max(0, diff);
+/**
+ * Atraso de entrada CONTABILIZADO, já com a tolerância da empresa aplicada.
+ * Até 10 minutos (config.jornada.toleranciaEntradaMin) o atraso é zero: está dentro
+ * da tolerância, então não aparece no relatório nem desconta do saldo. A partir daí,
+ * conta o atraso inteiro — não apenas o que passou dos 10 minutos.
+ */
+function calcularAtrasoEntradaMinutos(pontos, dataISO, jornadaPorGrupo) {
+    const bruto = calcularAtrasoEntradaBruto(pontos, dataISO, jornadaPorGrupo);
+    return bruto > config.jornada.toleranciaEntradaMin ? bruto : 0;
 }
 
 /**
  * Atraso por estourar o tempo de almoço, em minutos.
- * `toleranciaMin` e `flexivel` vêm do CADASTRO do funcionário (configurável), não mais de
- * uma lista de nomes hardcoded no código.
+ * `toleranciaMin` (tempo de almoço combinado) e `flexivel` vêm do CADASTRO do funcionário.
+ *
+ * Além do tempo combinado há 1 minuto de folga (config.jornada.toleranciaAlmocoMin), para
+ * não penalizar o arredondamento de quem bate o ponto no minuto seguinte. Passou disso, o
+ * excedente conta como atraso E desconta do saldo — aqui não existe o perdão que a entrada
+ * tem, porque estourar o almoço é escolha de quem está no intervalo.
  */
 function calcularAtrasoAlmocoMinutos(pontos, toleranciaMin, flexivel) {
-    if (flexivel) return 0;
-    if (!pontos.ALMOCO_SAIDA || !pontos.ALMOCO_RETORNO) return 0;
+    return calcularExcessoAlmoco(pontos, toleranciaMin, flexivel).atraso;
+}
+
+/**
+ * Detalha o estouro do almoço: quanto passou do combinado, quanto disso ficou dentro
+ * do minuto de folga (`perdoado`) e quanto virou atraso de fato.
+ *
+ * O minuto de folga precisa ser devolvido ao saldo também — se ele não conta como
+ * atraso, não pode aparecer como desconto de horas: seria a mesma falta punida
+ * de um jeito e perdoada de outro.
+ */
+function calcularExcessoAlmoco(pontos, toleranciaMin, flexivel) {
+    if (flexivel || !pontos.ALMOCO_SAIDA || !pontos.ALMOCO_RETORNO) {
+        return { excesso: 0, perdoado: 0, atraso: 0 };
+    }
 
     const tempoAlmocoReal = paraMinutos(pontos.ALMOCO_RETORNO) - paraMinutos(pontos.ALMOCO_SAIDA);
-    return Math.max(0, tempoAlmocoReal - toleranciaMin);
+    const excesso = Math.max(0, tempoAlmocoReal - toleranciaMin);
+    const perdoado = Math.min(excesso, config.jornada.toleranciaAlmocoMin);
+    return { excesso, perdoado, atraso: excesso - perdoado };
 }
 
 /**
@@ -70,35 +101,32 @@ function calcularMetaMinutos(dataISO, jornadaPorGrupo, ehFeriado) {
 }
 
 /**
- * Saldo do dia em MINUTOS, já com a regra de tolerância da empresa aplicada.
+ * Saldo do dia em MINUTOS, já com a tolerância de entrada aplicada.
  *
- * Atraso de até 10 minutos (config.jornada.minutosAtrasoSemDescontoNoSaldo) não pode
- * deixar o dia negativo: o atraso continua sendo contabilizado e exibido, mas o saldo
- * é elevado a zero na medida exata do atraso perdoado. Acima de 10 minutos não há
- * perdão nenhum — o atraso inteiro pesa no saldo.
+ * `minutosPerdoados` é o atraso de entrada que caiu dentro da tolerância (até 10 min).
+ * Como esse atraso não conta, o tempo que ele custou também não pode descontar do saldo —
+ * o saldo é devolvido na medida exata, sem nunca virar crédito.
  *
- * O perdão cobre no máximo o próprio atraso: quem chegou 8 min tarde E saiu 30 min
- * mais cedo continua com -30 min de saldo (só os 8 do atraso são relevados).
+ * O perdão cobre no máximo o próprio atraso tolerado: quem chegou 8 min tarde E saiu
+ * 30 min mais cedo continua com -22 min (só os 8 são relevados). Atraso de almoço
+ * nunca é perdoado aqui.
  *
  * Devolve null quando não dá para calcular saldo (sem meta, sem entrada ou sem saída).
  */
-function calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, atrasoMinutos = 0) {
+function calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, minutosPerdoados = 0) {
     if (metaMinutos === 0 || totalMinutos === 0 || !pontos.ENTRADA || !pontos.SAIDA) {
         return null;
     }
 
     const saldoBruto = totalMinutos - metaMinutos;
-    const limite = config.jornada.minutosAtrasoSemDescontoNoSaldo;
-    const dentroDaTolerancia = atrasoMinutos > 0 && atrasoMinutos <= limite;
-    if (!dentroDaTolerancia || saldoBruto >= 0) return saldoBruto;
+    if (minutosPerdoados <= 0 || saldoBruto >= 0) return saldoBruto;
 
-    // Devolve ao saldo só o que foi perdido pelo atraso tolerado, sem virar crédito.
-    return Math.min(0, saldoBruto + atrasoMinutos);
+    return Math.min(0, saldoBruto + minutosPerdoados);
 }
 
 /** Saldo do dia formatado como "+/-HH:MM" ou "---". */
-function calcularSaldo(totalMinutos, metaMinutos, pontos, atrasoMinutos = 0) {
-    const saldo = calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, atrasoMinutos);
+function calcularSaldo(totalMinutos, metaMinutos, pontos, minutosPerdoados = 0) {
+    const saldo = calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, minutosPerdoados);
     if (saldo === null) return '---';
     return minutosParaStr(saldo, true);
 }
@@ -213,12 +241,22 @@ function calcularViolacoesInterjornada(diasOrdenados) {
  */
 function montarRelatorioDia({ funcionario, dataISO, pontos, justificativas, ehFeriado, percentuaisHorasExtras, jornadaPorGrupo }) {
     const totalMinutos = calcularTempoTrabalhadoMinutos(pontos);
+
+    // Entrada: atraso dentro da tolerância não conta e não desconta — mas o tempo que
+    // ele custou precisa ser devolvido ao saldo (é o `perdoado`).
+    const atrasoEntradaBruto = calcularAtrasoEntradaBruto(pontos, dataISO, jornadaPorGrupo);
     const atrasoEntrada = calcularAtrasoEntradaMinutos(pontos, dataISO, jornadaPorGrupo);
-    const atrasoAlmoco = calcularAtrasoAlmocoMinutos(pontos, funcionario.tolerancia_almoco_min, !!funcionario.almoco_flexivel);
+    const perdoadoNoSaldo = atrasoEntrada === 0 ? atrasoEntradaBruto : 0;
+
+    // Almoço: o minuto de folga também é devolvido ao saldo, pelo mesmo motivo.
+    const almoco = calcularExcessoAlmoco(pontos, funcionario.tolerancia_almoco_min, !!funcionario.almoco_flexivel);
+    const atrasoAlmoco = almoco.atraso;
     const atrasoTotal = atrasoEntrada + atrasoAlmoco;
+    const totalPerdoado = perdoadoNoSaldo + almoco.perdoado;
+
     const metaMinutos = calcularMetaMinutos(dataISO, jornadaPorGrupo, ehFeriado);
-    const saldo = calcularSaldo(totalMinutos, metaMinutos, pontos, atrasoTotal);
-    const saldoMinutos = calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, atrasoTotal);
+    const saldo = calcularSaldo(totalMinutos, metaMinutos, pontos, totalPerdoado);
+    const saldoMinutos = calcularSaldoMinutos(totalMinutos, metaMinutos, pontos, totalPerdoado);
     const horasExtras = calcularHorasExtras(totalMinutos, metaMinutos, dataISO, ehFeriado, percentuaisHorasExtras);
     const cfgGrupoHoje = configDoGrupoNaData(dataISO, jornadaPorGrupo);
 
@@ -251,7 +289,11 @@ function montarRelatorioDia({ funcionario, dataISO, pontos, justificativas, ehFe
         ehFeriado: !!ehFeriado,
         saldo,
         saldoMinutos,
-        atrasoToleradoNoSaldo: atrasoTotal > 0 && atrasoTotal <= config.jornada.minutosAtrasoSemDescontoNoSaldo,
+        // true quando a pessoa chegou atrasada mas dentro da tolerância — o gestor pode
+        // querer saber que houve atraso relevado, mesmo ele não contando em lugar nenhum.
+        entradaDentroDaTolerancia: perdoadoNoSaldo > 0,
+        minutosAtrasoEntradaBruto: atrasoEntradaBruto,
+        atrasoAlmocoMinutos: atrasoAlmoco,
         horas_extras: {
             tempo: horasExtras.minutosExtra > 0 ? minutosParaStr(horasExtras.minutosExtra) : '00:00',
             tipo: horasExtras.tipoExtra,
@@ -270,8 +312,10 @@ function montarRelatorioDia({ funcionario, dataISO, pontos, justificativas, ehFe
 
 module.exports = {
     calcularTempoTrabalhadoMinutos,
+    calcularAtrasoEntradaBruto,
     calcularAtrasoEntradaMinutos,
     calcularAtrasoAlmocoMinutos,
+    calcularExcessoAlmoco,
     calcularMetaMinutos,
     calcularSaldo,
     calcularSaldoMinutos,

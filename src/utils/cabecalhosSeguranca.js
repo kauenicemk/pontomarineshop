@@ -28,7 +28,12 @@ const CABECALHOS = {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'DENY',
-    'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=()'
+    // Só a câmera é liberada (reconhecimento facial no totem). O resto fica negado
+    // para que um script injetado não consiga pedir localização, microfone etc.
+    'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+    // Obriga HTTPS por um ano. Sem includeSubDomains de propósito: o domínio pode ter
+    // outros subdomínios fora deste sistema, e forçá-los quebraria o que não é nosso.
+    'Strict-Transport-Security': 'max-age=31536000'
 };
 
 /** Devolve uma cópia da resposta com os cabeçalhos de segurança aplicados. */

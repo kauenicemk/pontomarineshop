@@ -191,19 +191,38 @@ function renderizar(d) {
 
 export function renderizarResumoDashboard(d) {
     const presentes = document.getElementById('lista-presentes-agora');
+    const intervalo = document.getElementById('lista-em-intervalo');
     const naoChegaram = document.getElementById('lista-nao-chegaram');
-    if (!presentes || !naoChegaram) return;
+    if (!presentes || !intervalo || !naoChegaram) return;
 
-    presentes.innerHTML = d.presentesAgora.length
-        ? d.presentesAgora.map((p) => linhaPessoa({
-            nome: p.nome, emoji: p.emoji,
-            cor: p.status === 'Em Almoço' ? 'amarelo' : 'verde',
-            detalhe: p.status === 'Em Almoço'
-                ? `Em intervalo desde <b>${escapeHtml(p.desde)}</b>`
-                : `Trabalhando desde <b>${escapeHtml(p.desde)}</b>`,
-            destaque: duracao(p.minutosDesde), destaqueRotulo: ''
+    // Quem está em intervalo tem uma lista própria: misturado com quem está no posto,
+    // o gestor lia "13 em expediente" e via gente almoçando no meio da lista.
+    const trabalhando = d.presentesAgora.filter((p) => p.status !== 'Em Almoço');
+    const emIntervalo = d.presentesAgora.filter((p) => p.status === 'Em Almoço');
+
+    const contador = (id, valor) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = valor;
+    };
+    contador('contador-em-expediente', trabalhando.length);
+    contador('contador-em-intervalo', emIntervalo.length);
+    contador('contador-nao-chegaram', d.naoChegaram.length);
+
+    presentes.innerHTML = trabalhando.length
+        ? trabalhando.map((p) => linhaPessoa({
+            nome: p.nome, emoji: p.emoji, cor: 'verde',
+            detalhe: `Entrou às <b>${escapeHtml(p.entrada || p.desde)}</b>${p.chegouAtrasado ? ` · <span class="marca-atraso">chegou ${duracao(p.minutosAtrasoEntrada)} atrasado</span>` : ''}`,
+            destaque: duracao(p.minutosDesde), destaqueRotulo: 'no posto'
         })).join('')
-        : '<p class="texto-vazio">Ninguém em expediente no momento.</p>';
+        : '<p class="texto-vazio">Ninguém no posto no momento.</p>';
+
+    intervalo.innerHTML = emIntervalo.length
+        ? emIntervalo.map((p) => linhaPessoa({
+            nome: p.nome, emoji: p.emoji, cor: 'amarelo',
+            detalhe: `Saiu para o almoço às <b>${escapeHtml(p.desde)}</b>`,
+            destaque: duracao(p.minutosDesde), destaqueRotulo: 'fora'
+        })).join('')
+        : '<p class="texto-vazio">Ninguém em intervalo agora.</p>';
 
     naoChegaram.innerHTML = d.naoChegaram.length
         ? d.naoChegaram.map((p) => linhaPessoa({

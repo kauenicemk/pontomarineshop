@@ -14,13 +14,27 @@ async function criarAdmin({ nome, email, senha }) {
     return { id: lastID, nome, email };
 }
 
+// Hash descartável de uma senha aleatória. Serve só para gastar o mesmo tempo de CPU
+// quando o e-mail não existe — ver o comentário em verificarLoginAdmin.
+const HASH_FALSO = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+
 /** Confere e-mail/senha; devolve os dados do admin (sem o hash) se corretos, ou null. */
 async function verificarLoginAdmin(email, senha) {
     const admin = await db.get(
         `SELECT id, nome, email, senha_hash FROM admins WHERE email = ? AND ativo = 1`,
         [String(email).toLowerCase().trim()]
     );
-    if (!admin) return null;
+
+    /**
+     * Se o e-mail não existe, ainda assim rodamos um bcrypt.compare contra um hash
+     * descartável. Sem isso, a resposta para um e-mail inexistente volta em poucos
+     * milissegundos e a de um e-mail válido demora ~100ms — a diferença é medível e
+     * permite descobrir quais e-mails têm conta no sistema (enumeração de usuários).
+     */
+    if (!admin) {
+        await bcrypt.compare(String(senha), HASH_FALSO);
+        return null;
+    }
 
     const confere = await bcrypt.compare(senha, admin.senha_hash);
     if (!confere) return null;
@@ -72,6 +86,19 @@ async function verificarSenhaTotem(senha) {
     return bcrypt.compare(String(senha), config.valor);
 }
 
+/**
+ * Versão dos tokens do totem. Todo token emitido carrega a versão vigente; ao trocar a
+ * senha, a versão sobe e os tokens antigos deixam de valer na hora.
+ *
+ * Sem isso, o token do tablet dura 90 dias e não havia como cancelá-lo: um tablet
+ * perdido ou roubado continuaria batendo ponto por meses, mesmo depois de a senha
+ * ser trocada. Agora trocar a senha desconecta todos os dispositivos.
+ */
+async function versaoTokenTotem() {
+    const linha = await db.get(`SELECT valor FROM configuracoes WHERE chave = 'totem_token_versao'`);
+    return Number(linha && linha.valor) || 1;
+}
+
 async function definirSenhaTotem(novaSenha) {
     const hash = await bcrypt.hash(String(novaSenha), 10);
     await db.run(
@@ -79,7 +106,18 @@ async function definirSenhaTotem(novaSenha) {
          ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`,
         [hash]
     );
-    await registrarAuditoria('trocar_senha_totem', 'configuracao', null, {});
+
+    const novaVersao = (await versaoTokenTotem()) + 1;
+    await db.run(
+        `INSERT INTO configuracoes (chave, valor) VALUES ('totem_token_versao', ?)
+         ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`,
+        [String(novaVersao)]
+    );
+
+    await registrarAuditoria('trocar_senha_totem', 'configuracao', null, {
+        tokens_invalidados: true, nova_versao: novaVersao
+    });
+    return { versao: novaVersao };
 }
 
 module.exports = {
@@ -88,5 +126,6 @@ module.exports = {
     listarAdmins,
     removerAdmin,
     verificarSenhaTotem,
-    definirSenhaTotem
+    definirSenhaTotem,
+    versaoTokenTotem
 };

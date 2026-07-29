@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#0a1120">
 <meta name="description" content="Ponto Marine Shop — sistema de controle de ponto da Marine Shop">
 <title>Ponto Marine Shop</title>
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/styles.css">
 <!--
   face-api.js carregado LOCALMENTE (nunca de CDN). Se o arquivo abaixo não existir ainda, o
@@ -228,11 +233,24 @@
 
             <div class="colunas-dashboard">
                 <div class="card">
-                    <h2><span class="ponto-status verde" aria-hidden="true"></span>Em expediente agora</h2>
+                    <div class="bloco-cabecalho">
+                        <h2><span class="ponto-status verde" aria-hidden="true"></span>Em expediente</h2>
+                        <span class="bloco-contador" id="contador-em-expediente">0</span>
+                    </div>
                     <div id="lista-presentes-agora"></div>
                 </div>
                 <div class="card">
-                    <h2><span class="ponto-status vermelho" aria-hidden="true"></span>Ainda não bateram ponto</h2>
+                    <div class="bloco-cabecalho">
+                        <h2><span class="ponto-status amarelo" aria-hidden="true"></span>Em intervalo</h2>
+                        <span class="bloco-contador" id="contador-em-intervalo">0</span>
+                    </div>
+                    <div id="lista-em-intervalo"></div>
+                </div>
+                <div class="card">
+                    <div class="bloco-cabecalho">
+                        <h2><span class="ponto-status vermelho" aria-hidden="true"></span>Ainda não bateram ponto</h2>
+                        <span class="bloco-contador" id="contador-nao-chegaram">0</span>
+                    </div>
                     <div id="lista-nao-chegaram"></div>
                 </div>
             </div>

@@ -43,11 +43,12 @@ export function montarLogos() {
 
         // Listeners em JS, sem onload=/onerror= no HTML: atributos inline seriam
         // bloqueados pela Content-Security-Policy (script-src 'self', sem unsafe-inline).
+        // O monograma é o estado de erro: fica display:none até a imagem falhar.
+        // Só o caminho de falha precisa de classe — o sucesso já é o padrão do CSS.
         const simbolo = slot.querySelector('.marca-logo-simbolo');
         const img = simbolo.querySelector('img');
-        img.addEventListener('load', () => simbolo.classList.add('com-imagem'));
         img.addEventListener('error', () => simbolo.classList.add('sem-imagem'));
-        if (img.complete && img.naturalWidth > 0) simbolo.classList.add('com-imagem');
+        if (img.complete && img.naturalWidth === 0) simbolo.classList.add('sem-imagem');
     });
 
     document.title = BRAND.nome;

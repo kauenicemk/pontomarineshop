@@ -34,10 +34,17 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
         params
     );
 
-    const [feriados, percentuais, jornadasPorFuncionario] = await Promise.all([
+    const trocasService = require('./trocasDia.service');
+    const tratativasService = require('./tratativas.service');
+
+    const [feriados, percentuais, jornadasPorFuncionario, trocas, tratativas] = await Promise.all([
         feriadosService.buscarComoConjunto({ dataInicio, dataFim }),
         buscarPercentuaisHorasExtras(),
-        funcionariosService.buscarJornadaDeTodos()
+        funcionariosService.buscarJornadaDeTodos(),
+        trocasService.mapaDoPeriodo({ dataInicio, dataFim }),
+        dataInicio && dataFim
+            ? tratativasService.mapaDoPeriodo({ dataInicio, dataFim })
+            : Promise.resolve({})
     ]);
 
     const agrupado = {};
@@ -66,17 +73,20 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
         if (row.justificativa) agrupado[chave].justificativas[chaveTipo] = row.justificativa;
     });
 
-    return Object.values(agrupado).map((dia) =>
-        montarRelatorioDia({
+    return Object.values(agrupado).map((dia) => {
+        const chave = `${dia.funcionarioId}_${dia.dataISO}`;
+        return montarRelatorioDia({
             funcionario: dia.funcionario,
             dataISO: dia.dataISO,
             pontos: dia.pontos,
             justificativas: dia.justificativas,
             ehFeriado: feriados.has(dia.dataISO),
             percentuaisHorasExtras: percentuais,
-            jornadaPorGrupo: jornadasPorFuncionario[dia.funcionarioId] || {}
-        })
-    );
+            jornadaPorGrupo: jornadasPorFuncionario[dia.funcionarioId] || {},
+            troca: trocas[chave] || null,
+            tratativa: tratativas[chave] || null
+        });
+    });
 }
 
 /**

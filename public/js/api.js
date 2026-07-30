@@ -124,6 +124,17 @@ export const api = {
     buscarConfirmacaoEspelho: (funcionarioId, mes) => chamar(`/api/espelho/confirmacao/${funcionarioId}?mes=${mes}`, { totem: true, admin: true }),
     confirmarEspelho: (funcionario_id, mes_referencia) => chamar('/api/espelho/confirmar', { method: 'POST', body: { funcionario_id, mes_referencia }, totem: true }),
 
+    // Trocas de dia (folga compensada)
+    listarTrocas: (inicio, fim) => chamar(`/api/ocorrencias/trocas?${new URLSearchParams({ inicio: inicio || '', fim: fim || '' })}`, { admin: true }),
+    criarTroca: (dados) => chamar('/api/ocorrencias/trocas', { method: 'POST', body: dados, admin: true }),
+    removerTroca: (id) => chamar(`/api/ocorrencias/trocas/${id}`, { method: 'DELETE', admin: true }),
+
+    // Tratativas de atraso e abono de horas
+    listarTratativas: (inicio, fim) => chamar(`/api/ocorrencias/atrasos?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
+    tratarAtraso: (dados) => chamar('/api/ocorrencias/atrasos', { method: 'POST', body: dados, admin: true }),
+    tratarAtrasosEmLote: (dados) => chamar('/api/ocorrencias/atrasos/lote', { method: 'POST', body: dados, admin: true }),
+    removerTratativa: (id) => chamar(`/api/ocorrencias/atrasos/${id}`, { method: 'DELETE', admin: true }),
+
     // People Analytics
     indicadoresGerais: (inicio, fim) => chamar(`/api/analytics/indicadores?${new URLSearchParams({ inicio, fim })}`, { admin: true })
 };

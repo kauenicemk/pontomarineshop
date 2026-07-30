@@ -338,3 +338,142 @@ test('regra geral: o que conta como atraso e o que desconta do saldo batem', () 
         assert.strictEqual(dia.saldoMinutos, esperado === 0 ? 0 : -esperado, `saldo de ${entrada}/${retorno} deve espelhar o atraso`);
     });
 });
+
+/* ===================== Troca de dia (folga compensada) ===================== */
+
+const SEGUNDA = '2026-07-20';
+
+test('troca: dia de folga fica sem meta e sem atraso', () => {
+    const troca = { papel: 'folga', dataFolga: SABADO, dataTrabalho: DOMINGO };
+    // Sábado normalmente já não tem meta nesta jornada; usa a segunda para provar o efeito
+    const trocaSegunda = { papel: 'folga', dataFolga: SEGUNDA, dataTrabalho: DOMINGO };
+
+    assert.strictEqual(calc.calcularMetaMinutos(SEGUNDA, JORNADA_PADRAO, false, trocaSegunda), 0,
+        'no dia da folga a meta é zero');
+    assert.strictEqual(calc.calcularAtrasoEntradaMinutos({ ...diaCompleto, ENTRADA: '10:00' }, SEGUNDA, JORNADA_PADRAO, trocaSegunda), 0,
+        'no dia da folga não existe atraso');
+    assert.ok(troca);
+});
+
+test('troca: dia compensado herda a meta e o horário do dia trocado', () => {
+    // Folgou na segunda (meta 480, entrada 08:00) e trabalhou no domingo
+    const troca = { papel: 'trabalho', dataFolga: SEGUNDA, dataTrabalho: DOMINGO };
+
+    assert.strictEqual(calc.calcularMetaMinutos(DOMINGO, JORNADA_PADRAO, false, troca), 480,
+        'o domingo passa a ter a meta da segunda');
+    assert.strictEqual(calc.calcularAtrasoEntradaMinutos({ ...diaCompleto, ENTRADA: '08:30' }, DOMINGO, JORNADA_PADRAO, troca), 30,
+        'e o horário de entrada da segunda também vale no domingo');
+});
+
+test('troca: trabalho compensado NÃO é hora extra de 100%', () => {
+    const troca = { papel: 'trabalho', dataFolga: SEGUNDA, dataTrabalho: DOMINGO };
+    const semTroca = calc.calcularHorasExtras(540, 0, DOMINGO, false, PERCENTUAIS, null);
+    const comTroca = calc.calcularHorasExtras(540, 480, DOMINGO, false, PERCENTUAIS, troca);
+
+    assert.strictEqual(semTroca.tipoExtra, 'domingo_feriado', 'sem troca, domingo é 100%');
+    assert.strictEqual(comTroca.tipoExtra, 'dia_util', 'com troca, é expediente normal deslocado');
+    assert.strictEqual(comTroca.minutosExtra, 60, 'só o que passou da meta herdada é extra');
+});
+
+test('troca completa: relatório do domingo compensado sai como dia normal', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: DOMINGO,
+        pontos: { ENTRADA: '08:00', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:00', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO,
+        troca: { papel: 'trabalho', dataFolga: SEGUNDA, dataTrabalho: DOMINGO }
+    });
+
+    assert.strictEqual(dia.saldoMinutos, 0, 'cumpriu a meta herdada: saldo zero');
+    assert.strictEqual(dia.horas_extras.minutos, 0, 'sem hora extra');
+    assert.strictEqual(dia.troca.papel, 'trabalho');
+    assert.strictEqual(dia.troca.dataPar, SEGUNDA, 'o relatório aponta o dia que foi trocado');
+});
+
+/* ===================== Tratativa de atraso e atestado de horas ===================== */
+
+const pontosAtrasado = { ENTRADA: '08:30', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:00', SAIDA: '17:00' };
+
+function diaComTratativa(tratativa) {
+    return calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: QUARTA,
+        pontos: pontosAtrasado,
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO,
+        tratativa
+    });
+}
+
+test('sem tratativa, o atraso de 30 min conta e desconta', () => {
+    const dia = diaComTratativa(null);
+    assert.strictEqual(dia.atrasoMinutos, 30);
+    assert.strictEqual(dia.saldoMinutos, -30);
+});
+
+test('atraso ABONADO sai do relatório e devolve as horas ao saldo', () => {
+    const dia = diaComTratativa({ tipo: 'atraso_abonado', minutos_abonados: 0, motivo: 'combinado' });
+    assert.strictEqual(dia.atrasoMinutos, 0, 'o atraso deixa de contar');
+    assert.strictEqual(dia.saldoMinutos, 0, 'e o tempo perdido volta ao saldo');
+    assert.strictEqual(dia.tratativa.tipo, 'atraso_abonado');
+});
+
+test('atraso REGISTRADO mantém o atraso e o desconto', () => {
+    const dia = diaComTratativa({ tipo: 'atraso_registrado', minutos_abonados: 0, motivo: 'trânsito' });
+    assert.strictEqual(dia.atrasoMinutos, 30, 'continua contando — é o objetivo do registro');
+    assert.strictEqual(dia.saldoMinutos, -30);
+    assert.strictEqual(dia.tratativa.motivo, 'trânsito', 'mas o motivo fica guardado');
+});
+
+test('atestado de horas abona os minutos informados no saldo', () => {
+    // Chegou 30 min atrasado e o atestado abona 30 min: saldo volta a zero,
+    // mas o atraso continua visível (não foi abonado como atraso).
+    const dia = diaComTratativa({ tipo: 'atestado_horas', minutos_abonados: 30, motivo: 'consulta' });
+    assert.strictEqual(dia.saldoMinutos, 0, 'os 30 min abonados cobrem o buraco no saldo');
+    assert.strictEqual(dia.atrasoMinutos, 30, 'o atraso segue registrado');
+    assert.strictEqual(dia.minutosAbonados, 30);
+});
+
+test('atestado de horas não vira crédito além do necessário', () => {
+    const dia = diaComTratativa({ tipo: 'atestado_horas', minutos_abonados: 120, motivo: 'consulta longa' });
+    assert.strictEqual(dia.saldoMinutos, 0, 'abono generoso não gera saldo positivo artificial');
+});
+
+test('atestado de horas cobre SAÍDA ANTECIPADA, sem atraso na entrada', () => {
+    // Caso mais comum do atestado de horas: chegou na hora, saiu 2h antes por consulta.
+    // É o cenário que a tela de Atrasos não lista (não há atraso), por isso existe o
+    // lançamento avulso — e o abono precisa fechar o saldo do dia.
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: QUARTA,
+        pontos: { ENTRADA: '08:00', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:00', SAIDA: '15:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO,
+        tratativa: { tipo: 'atestado_horas', minutos_abonados: 120, motivo: 'consulta às 15h' }
+    });
+    assert.strictEqual(dia.atrasoMinutos, 0, 'não houve atraso na entrada');
+    assert.strictEqual(dia.saldoMinutos, 0, 'as 2h do atestado fecham o dia');
+});
+
+/* ===================== Validações das tratativas ===================== */
+
+const tratativas = require('../src/services/tratativas.service');
+
+test('tratativa em data futura é recusada', () => {
+    assert.throws(
+        () => tratativas.exigirDataNaoFutura('2026-12-31', '2026-07-30'),
+        /data futura/
+    );
+});
+
+test('tratativa em data passada ou de hoje é aceita', () => {
+    assert.doesNotThrow(() => tratativas.exigirDataNaoFutura('2026-07-30', '2026-07-30'));
+    assert.doesNotThrow(() => tratativas.exigirDataNaoFutura('2026-07-01', '2026-07-30'));
+});

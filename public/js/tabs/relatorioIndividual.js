@@ -31,6 +31,29 @@ function primeiroEUltimoDiaDoMes(mesISO) {
     return { inicio, fim };
 }
 
+/**
+ * Selo que explica por que aquele dia não segue o padrão. Sem isso, um atraso
+ * abonado aparece como "00:00" sem motivo aparente e um domingo trabalhado
+ * aparece sem hora extra — o gestor precisa ver o porquê na própria linha.
+ */
+function seloDoDia(d) {
+    const selos = [];
+    if (d.troca) {
+        const par = String(d.troca.dataPar || '').split('-').reverse().join('/');
+        selos.push(d.troca.papel === 'folga'
+            ? `<span class="selo-ocorrencia selo-troca" title="Folga compensada trabalhando em ${par}">folga trocada</span>`
+            : `<span class="selo-ocorrencia selo-troca" title="Compensando a folga de ${par}">compensação</span>`);
+    }
+    if (d.tratativa) {
+        const t = d.tratativa;
+        const titulo = escapeHtml(t.motivo || '');
+        if (t.tipo === 'atraso_abonado') selos.push(`<span class="selo-ocorrencia selo-abonado" title="${titulo}">abonado</span>`);
+        else if (t.tipo === 'atraso_registrado') selos.push(`<span class="selo-ocorrencia selo-registrado" title="${titulo}">justificado</span>`);
+        else if (t.tipo === 'atestado_horas') selos.push(`<span class="selo-ocorrencia selo-abonado" title="${titulo}">atestado ${Math.floor(t.minutos_abonados / 60)}h${String(t.minutos_abonados % 60).padStart(2, '0')}</span>`);
+    }
+    return selos.join(' ');
+}
+
 function cartaoResumo(rotulo, valor, cor) {
     return `
         <div class="cartao-resumo">
@@ -100,7 +123,7 @@ export async function carregarRelatorioIndividual() {
             const extra100 = d.horas_extras.tipo === 'domingo_feriado' && d.horas_extras.tempo !== '00:00' ? escapeHtml(d.horas_extras.tempo) : '---';
             return `
             <tr>
-                <td>${escapeHtml(d.data)}${d.ehFeriado ? ' (feriado)' : ''}</td>
+                <td style="white-space:normal">${escapeHtml(d.data)}${d.ehFeriado ? ' (feriado)' : ''} ${seloDoDia(d)}</td>
                 <td>${escapeHtml(d.pontos.ENTRADA || '---')}</td>
                 <td>${escapeHtml(d.pontos.SAIDA || '---')}</td>
                 <td><b>${escapeHtml(d.tempo_trabalhado)}</b></td>
@@ -147,7 +170,7 @@ export function exportarRelatorioIndividualCSV() {
     csv += `Relatorio individual;${celulaCsv(nomeSelecionado)}\n`;
     csv += `Mes de referencia;${celulaCsv(mes)}\n\n`;
 
-    csv += 'Data;Entrada;S.Almoco;V.Almoco;Saida;Trabalhado;Atraso;Saldo;Extra 60%;Extra 100%;Noturno;Feriado\n';
+    csv += 'Data;Entrada;S.Almoco;V.Almoco;Saida;Trabalhado;Atraso;Saldo;Extra 60%;Extra 100%;Noturno;Feriado;Ocorrencia;Motivo\n';
     r.dias.slice().sort((a, b) => a.dataISO.localeCompare(b.dataISO)).forEach((d) => {
         csv += [
             d.data,
@@ -156,7 +179,10 @@ export function exportarRelatorioIndividualCSV() {
             d.horas_extras.tipo === 'dia_util' ? d.horas_extras.tempo : '',
             d.horas_extras.tipo === 'domingo_feriado' ? d.horas_extras.tempo : '',
             d.horas_noturnas.tempo,
-            d.ehFeriado ? 'sim' : ''
+            d.ehFeriado ? 'sim' : '',
+            [d.troca ? (d.troca.papel === 'folga' ? 'folga trocada' : 'compensacao') : '',
+             d.tratativa ? d.tratativa.tipo : ''].filter(Boolean).join(' + '),
+            d.tratativa ? (d.tratativa.motivo || '') : ''
         ].map(celulaCsv).join(';') + '\n';
     });
 

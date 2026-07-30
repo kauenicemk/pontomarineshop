@@ -190,6 +190,14 @@
                 <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="10" y1="14" x2="14" y2="18"/><line x1="14" y1="14" x2="10" y2="18"/></svg>
                 Faltas
             </button>
+            <button data-admin-aba="atrasos">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                Atrasos
+            </button>
+            <button data-admin-aba="trocas">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                Trocas de Dia
+            </button>
             <button data-admin-aba="feriados">
                 <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 Feriados
@@ -288,7 +296,7 @@
                     o horário, apagar um registro errado ou lançar um que faltou. Toda alteração exige
                     justificativa e fica registrada no log de auditoria.
                 </p>
-                <div class="filtros filtros-editor">
+                <div class="filtros">
                     <label>Funcionário
                         <select id="select-f-ajuste"></select>
                     </label>
@@ -487,6 +495,14 @@
                     <h2>Período</h2>
                     <div class="filtros">
                         <label>Mês <input type="month" id="faltas-mes"></label>
+                        <label>Regime
+                            <select id="faltas-regime">
+                                <option value="">Todos os regimes</option>
+                                <option value="CLT">CLT</option>
+                                <option value="ESTAGIARIO">Estagiário</option>
+                                <option value="PJ">PJ</option>
+                            </select>
+                        </label>
                         <label>Turno
                             <select id="faltas-turno">
                                 <option value="">Todos os turnos</option>
@@ -569,6 +585,14 @@
                         <h2>Filtrar</h2>
                         <div class="filtros">
                             <label>Buscar <input type="text" class="campo" id="config-busca" placeholder="Nome do colaborador" autocomplete="off"></label>
+                            <label>Regime
+                                <select id="config-regime">
+                                    <option value="">Todos os regimes</option>
+                                    <option value="CLT">CLT</option>
+                                    <option value="ESTAGIARIO">Estagiário</option>
+                                    <option value="PJ">PJ</option>
+                                </select>
+                            </label>
                             <label>Turno
                                 <select id="config-turno">
                                     <option value="">Todos os turnos</option>
@@ -673,6 +697,141 @@
             </div>
         </section>
 
+        <!-- ---------- Atrasos ---------- -->
+        <section id="admin-atrasos" class="admin-tela">
+            <h1 class="admin-secao-titulo">Atrasos</h1>
+            <p class="admin-secao-subtitulo">Justifique atrasos abonando (sai do relatório) ou apenas registrando (continua contando).</p>
+            <div class="aviso-info">
+                Atraso de até 10 minutos já não conta — não aparece aqui. <b>Abonar</b> é para quando ficou
+                combinado chegar mais tarde: o atraso sai do relatório e as horas voltam ao saldo.
+                <b>Registrar</b> mantém o atraso e guarda o motivo, para o histórico de disciplina.
+                O <b>atestado de horas</b> abona uma quantidade de minutos do dia.
+            </div>
+
+            <div class="layout-painel">
+            <div>
+                <div class="card">
+                    <div class="bloco-cabecalho">
+                        <h2>Atrasos no período</h2>
+                        <span class="bloco-contador" id="atrasos-contador-total">0</span>
+                    </div>
+                    <div class="tabela-wrap">
+                        <table>
+                            <thead><tr>
+                                <th style="width:34px;"></th><th>Colaborador</th><th>Data</th>
+                                <th>Entrada</th><th>Previsto</th><th>Atraso</th><th>Situação</th><th></th>
+                            </tr></thead>
+                            <tbody id="lista-atrasos"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Tratativas já registradas</h2>
+                    <div class="tabela-wrap">
+                        <table>
+                            <thead><tr><th>Colaborador</th><th>Data</th><th>Tipo</th><th>Abonado</th><th>Motivo</th><th></th></tr></thead>
+                            <tbody id="lista-tratativas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Período</h2>
+                    <div class="filtros">
+                        <label>Mês <input type="month" id="atrasos-mes"></label>
+                        <label>Regime
+                            <select id="atrasos-regime">
+                                <option value="">Todos os regimes</option>
+                                <option value="CLT">CLT</option>
+                                <option value="ESTAGIARIO">Estagiário</option>
+                                <option value="PJ">PJ</option>
+                            </select>
+                        </label>
+                        <label>Turno
+                            <select id="atrasos-turno">
+                                <option value="">Todos os turnos</option>
+                                <option value="manha_tarde">Manhã/Tarde</option>
+                                <option value="tarde_noite">Tarde/Noite</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button class="btn btn-principal" id="btn-filtrar-atrasos" style="margin-top:14px;">Buscar atrasos</button>
+                </div>
+
+                <div class="card barra-lote escondido" id="atrasos-barra-lote">
+                    <h2>Tratar em massa</h2>
+                    <label class="label-checkbox" style="margin-bottom:10px;">
+                        <input type="checkbox" id="atrasos-selecionar-todos">
+                        <b>Selecionar todos</b>
+                    </label>
+                    <p class="contador-selecao" id="atrasos-contador">Nenhum atraso selecionado</p>
+                    <button class="btn btn-principal" id="btn-tratar-lote" style="margin-top:12px;" disabled>Tratar selecionados</button>
+                </div>
+
+                <div class="card">
+                    <h2>Atestado de horas</h2>
+                    <p class="admin-secao-subtitulo" style="margin-bottom:12px;">
+                        Para quando o atestado não gerou atraso na entrada — saída antecipada
+                        ou ida ao médico no meio do expediente. Esses dias não aparecem na lista
+                        ao lado, então lance por aqui.
+                    </p>
+                    <button class="btn btn-secundario" id="btn-atestado-avulso">Lançar atestado de horas</button>
+                </div>
+            </aside>
+            </div>
+        </section>
+
+        <!-- ---------- Trocas de Dia ---------- -->
+        <section id="admin-trocas" class="admin-tela">
+            <h1 class="admin-secao-titulo">Trocas de Dia</h1>
+            <p class="admin-secao-subtitulo">Folga em um dia compensada com trabalho em outro.</p>
+            <div class="aviso-info">
+                A troca <b>move a jornada</b> de um dia para o outro: o dia de folga deixa de gerar falta
+                e atraso, e o dia trabalhado passa a valer como expediente normal — inclusive num domingo,
+                onde o trabalho contaria como hora extra de 100% se não houvesse a troca.
+            </div>
+
+            <div class="layout-painel">
+            <div>
+                <div class="card">
+                    <div class="bloco-cabecalho">
+                        <h2>Trocas registradas</h2>
+                        <span class="bloco-contador" id="trocas-contador">0</span>
+                    </div>
+                    <div class="tabela-wrap">
+                        <table>
+                            <thead><tr><th>Colaborador</th><th>Regime</th><th>Folgou em</th><th>Compensou em</th><th>Observação</th><th></th></tr></thead>
+                            <tbody id="lista-trocas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="painel-lateral">
+                <div class="card">
+                    <h2>Registrar troca</h2>
+                    <div class="filtros">
+                        <label>Colaborador <select id="troca-funcionario"></select></label>
+                        <label>Dia de folga <input type="date" id="troca-data-folga"></label>
+                        <label>Dia trabalhado <input type="date" id="troca-data-trabalho"></label>
+                        <label>Observação <input type="text" class="campo" id="troca-observacao" placeholder="opcional"></label>
+                    </div>
+                    <button class="btn btn-principal" id="btn-registrar-troca" style="margin-top:14px;">Registrar troca</button>
+                </div>
+
+                <div class="card">
+                    <h2>Ver período</h2>
+                    <div class="filtros">
+                        <label>Mês <input type="month" id="trocas-mes"></label>
+                    </div>
+                </div>
+            </aside>
+            </div>
+        </section>
+
         <!-- ---------- Log de Auditoria ---------- -->
         <section id="admin-auditoria" class="admin-tela">
             <h1 class="admin-secao-titulo">Log de Auditoria</h1>
@@ -773,6 +932,51 @@
         <div class="modal-botoes">
             <button class="btn btn-secundario" id="btn-cancelar-justificativa">Cancelar</button>
             <button class="btn btn-principal" id="btn-confirmar-justificativa">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalTratarAtraso">
+    <div class="modal-box modal-box-justificar" role="dialog" aria-modal="true" aria-labelledby="tratar-titulo">
+        <h3 id="tratar-titulo">Justificar atraso</h3>
+        <p class="confirmar-texto" id="tratar-info"></p>
+        <div class="lista-revisao escondido" id="tratar-revisao"></div>
+
+        <!-- Só aparecem no lançamento avulso de atestado, onde não há linha de atraso
+             na tabela para dizer de quem e de que dia estamos falando. -->
+        <div class="escondido" id="tratar-campos-avulso">
+            <label class="rotulo" style="margin-bottom:10px;">Colaborador
+                <select id="tratar-funcionario" class="campo"></select>
+            </label>
+            <label class="rotulo" style="margin-bottom:10px;">Data
+                <input type="date" class="campo" id="tratar-data"
+                       style="text-align:left; letter-spacing:normal; font-size:14px;">
+            </label>
+        </div>
+
+        <label class="rotulo" id="tratar-campo-tipo" style="margin-bottom:10px;">O que fazer com este atraso?
+            <select id="tratar-tipo" class="campo">
+                <option value="atraso_abonado">Abonar — remove o atraso e devolve as horas</option>
+                <option value="atraso_registrado">Registrar — mantém o atraso no relatório</option>
+                <option value="atestado_horas">Atestado de horas — abona minutos do dia</option>
+            </select>
+        </label>
+
+        <label class="rotulo escondido" id="tratar-campo-minutos" style="margin-bottom:10px;">Minutos abonados
+            <input type="number" class="campo" id="tratar-minutos" min="1" max="1440" step="5" value="60"
+                   style="text-align:left; letter-spacing:normal; font-size:14px;">
+        </label>
+
+        <label class="rotulo" style="margin-bottom:6px;">Motivo
+            <input type="text" class="campo" id="tratar-motivo" maxlength="300"
+                   placeholder="Ex: combinado com a gerência / consulta médica"
+                   style="text-align:left; letter-spacing:normal; font-size:14px;">
+        </label>
+        <p class="erro-msg" id="tratar-erro" role="alert"></p>
+
+        <div class="modal-botoes">
+            <button type="button" class="btn btn-secundario" id="btn-cancelar-tratativa">Cancelar</button>
+            <button type="button" class="btn btn-principal" id="btn-confirmar-tratativa">Confirmar</button>
         </div>
     </div>
 </div>

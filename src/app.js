@@ -14,6 +14,7 @@ const adminRoutes = require('./routes/admin.routes');
 const feriasRoutes = require('./routes/ferias.routes');
 const espelhoRoutes = require('./routes/espelho.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const ocorrenciasRoutes = require('./routes/ocorrencias.routes');
 
 const { comContexto } = require('./utils/contextoRequisicao');
 
@@ -95,6 +96,7 @@ app.route('/api/admin', adminRoutes);
 app.route('/api/ferias', feriasRoutes);
 app.route('/api/espelho', espelhoRoutes);
 app.route('/api/analytics', analyticsRoutes);
+app.route('/api/ocorrencias', ocorrenciasRoutes);
 
 app.notFound((c) => c.json({ message: 'Rota não encontrada.' }, 404));
 app.onError(errorHandler);

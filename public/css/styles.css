@@ -223,6 +223,16 @@ a { color: var(--accent); }
     transition: color var(--transicao);
 }
 .troca-tema:hover { color: var(--texto); }
+.troca-tema-rotulo { white-space: nowrap; }
+
+/* Selos de ocorrência do dia (troca de dia / tratativa de atraso) nos relatórios */
+.selo-ocorrencia {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 999px; white-space: nowrap; vertical-align: 1px;
+}
+.selo-abonado { background: var(--verde-suave); color: var(--verde); }
+.selo-registrado { background: rgba(245, 179, 49, .14); color: var(--amarelo); }
+.selo-troca { background: var(--accent-suave); color: var(--accent-texto); }
 
 /* O trilho e o botão do switch. A bolinha desliza com um easing levemente
    elástico — é a única animação "divertida" do sistema, e serve de confirmação

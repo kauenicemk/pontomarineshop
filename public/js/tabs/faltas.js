@@ -7,6 +7,7 @@ import { mapaDeTurnos, ROTULOS_TURNO } from '../turno.js';
 
 let faltasCache = [];        // faltas do último cálculo (já filtradas por turno)
 let turnosPorFuncionario = {};
+let regimePorFuncionario = {};
 let modoLote = false;        // o modal está justificando várias faltas de uma vez?
 
 const ROTULOS_TIPO = {
@@ -40,6 +41,8 @@ async function garantirTurnos() {
     try {
         const todos = await api.listarFuncionariosTodos();
         turnosPorFuncionario = mapaDeTurnos(todos);
+        regimePorFuncionario = {};
+        todos.forEach((f) => { regimePorFuncionario[f.id] = f.regime; });
     } catch (_) {
         turnosPorFuncionario = {};
     }
@@ -52,6 +55,7 @@ export async function carregarFaltas() {
     const mesInput = document.getElementById('faltas-mes').value || mesAtualISO();
     const { inicio, fim } = primeiroEUltimoDiaDoMes(mesInput);
     const turnoFiltro = document.getElementById('faltas-turno')?.value || '';
+    const regimeFiltro = document.getElementById('faltas-regime')?.value || '';
     const tbody = document.getElementById('lista-faltas');
     const tbodyJustificadas = document.getElementById('lista-ausencias-justificadas');
 
@@ -65,7 +69,9 @@ export async function carregarFaltas() {
         return;
     }
 
-    faltasCache = resultado.faltas.filter((f) => !turnoFiltro || turnosPorFuncionario[f.funcionario_id] === turnoFiltro);
+    faltasCache = resultado.faltas
+        .filter((f) => !turnoFiltro || turnosPorFuncionario[f.funcionario_id] === turnoFiltro)
+        .filter((f) => !regimeFiltro || (regimePorFuncionario[f.funcionario_id] || f.regime) === regimeFiltro);
 
     renderizarFaltas(resultado.totalDiasUteisNoPeriodo, turnoFiltro);
     renderizarJustificadas(resultado.ausenciasJustificadas || [], tbodyJustificadas, turnoFiltro);
@@ -164,6 +170,7 @@ export function iniciarAcoesEmLote() {
     btnLote.addEventListener('click', () => abrirJustificativaEmLote());
 
     document.getElementById('faltas-turno')?.addEventListener('change', () => carregarFaltas());
+    document.getElementById('faltas-regime')?.addEventListener('change', () => carregarFaltas());
 }
 
 /* ===================== Modal de justificativa ===================== */

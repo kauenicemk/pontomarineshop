@@ -16,6 +16,21 @@ function primeiroEUltimoDiaDoMes(mesISO) {
     return { inicio, fim };
 }
 
+/**
+ * Texto curto da ocorrência para o espelho. O espelho é o documento que o
+ * colaborador assina: se um atraso foi abonado ou um dia foi trocado, isso
+ * precisa estar escrito ali, não só no painel do gestor.
+ */
+function ocorrenciaDoDia(d) {
+    const partes = [];
+    if (d.troca) partes.push(d.troca.papel === 'folga' ? 'folga trocada' : 'compensação');
+    if (d.tratativa) {
+        const rotulos = { atraso_abonado: 'atraso abonado', atraso_registrado: 'atraso justificado', atestado_horas: 'atestado de horas' };
+        partes.push(rotulos[d.tratativa.tipo] || d.tratativa.tipo);
+    }
+    return partes.length ? ` <small>(${escapeHtml(partes.join(', '))})</small>` : '';
+}
+
 function nomeDoMes(mesISO) {
     const [ano, mes] = mesISO.split('-').map(Number);
     const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -77,7 +92,7 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
             <tbody>
                 ${diasOrdenados.map((d) => `
                     <tr>
-                        <td>${escapeHtml(d.data)}${d.ehFeriado ? ' (feriado)' : ''}</td>
+                        <td>${escapeHtml(d.data)}${d.ehFeriado ? ' (feriado)' : ''}${ocorrenciaDoDia(d)}</td>
                         <td>${escapeHtml(d.pontos.ENTRADA || '---')}</td>
                         <td>${escapeHtml(d.pontos.ALMOCO_SAIDA || '---')}</td>
                         <td>${escapeHtml(d.pontos.ALMOCO_RETORNO || '---')}</td>

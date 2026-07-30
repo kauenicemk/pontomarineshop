@@ -46,7 +46,7 @@ export async function renderizarAbaConfig() {
     }
 
     container.innerHTML = funcionarios.map((f) => `
-        <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}" data-turno="${turnoDoFuncionario(f)}">
+        <div class="config-row-funcionario ${f.ativo ? '' : 'inativo'}" data-id="${f.id}" data-turno="${turnoDoFuncionario(f)}" data-regime="${escapeHtml(f.regime)}">
             <button type="button" class="config-gaveta-header" aria-expanded="false">
                 <span class="config-gaveta-titulo">
                     <b>${escapeHtml(f.emoji)} ${escapeHtml(f.nome)}</b>
@@ -230,17 +230,21 @@ function iniciarFiltros() {
     busca.dataset.iniciado = '1';
     busca.addEventListener('input', aplicarFiltros);
     turno?.addEventListener('change', aplicarFiltros);
+    document.getElementById('config-regime')?.addEventListener('change', aplicarFiltros);
 }
 
 function aplicarFiltros() {
     const termo = (document.getElementById('config-busca')?.value || '').trim().toLowerCase();
     const turno = document.getElementById('config-turno')?.value || '';
+    const regime = document.getElementById('config-regime')?.value || '';
     const container = document.getElementById('lista-config-horarios');
     let visiveis = 0;
 
     container.querySelectorAll('.config-row-funcionario').forEach((linha) => {
         const nome = (linha.querySelector('.config-gaveta-titulo b')?.textContent || '').toLowerCase();
-        const combina = (!termo || nome.includes(termo)) && (!turno || linha.dataset.turno === turno);
+        const combina = (!termo || nome.includes(termo))
+            && (!turno || linha.dataset.turno === turno)
+            && (!regime || linha.dataset.regime === regime);
         linha.classList.toggle('escondido', !combina);
         if (combina) visiveis += 1;
     });

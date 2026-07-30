@@ -86,6 +86,9 @@ async function calcularFaltas({ dataInicio, dataFim }) {
         return { faltas: [], ausenciasJustificadas: [], totalDiasUteisNoPeriodo: 0 };
     }
 
+    const trocasService = require('./trocasDia.service');
+    const folgasCompensadas = await trocasService.folgasPorFuncionario({ dataInicio, dataFim });
+
     const [funcionarios, feriadosSet, justificadas, entradasRegistradas, jornadasPorFuncionario] = await Promise.all([
         db.all(`SELECT id, emoji, nome, regime FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`),
         feriadosService.buscarComoConjunto({ dataInicio, dataFim }),
@@ -126,6 +129,8 @@ async function calcularFaltas({ dataInicio, dataFim }) {
             const chave = `${f.id}_${data}`;
             if (entradasPorChave.has(chave)) return;    // bateu ponto nesse dia
             if (justificadasPorChave.has(chave)) return; // ausência justificada
+            // Folga trocada por outro dia: não é falta, o dia foi compensado.
+            if (folgasCompensadas.has(chave)) return;
 
             faltas.push({ funcionario_id: f.id, emoji: f.emoji, nome: f.nome, regime: f.regime, data, tipo: 'falta_injustificada' });
         });

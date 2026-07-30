@@ -23,6 +23,8 @@ import * as espelho from './tabs/espelho.js';
 import * as dashboard from './tabs/dashboard.js';
 import * as auditoria from './tabs/auditoria.js';
 import * as editorPontos from './tabs/editorPontos.js';
+import * as atrasos from './tabs/atrasos.js';
+import * as trocas from './tabs/trocas.js';
 
 const ehModoAdmin = window.location.pathname.startsWith('/admin');
 
@@ -169,6 +171,7 @@ async function recarregarFuncionariosDoAdmin() {
     faltas.setFuncionarios(funcionarios);
     relatorioIndividual.popularSeletorIndividual(funcionarios);
     ferias.setFuncionarios(funcionarios);
+    trocas.popularSeletorTrocas(funcionarios);
     return funcionarios;
 }
 
@@ -193,6 +196,8 @@ function carregarConteudoAdminAba(nomeAba) {
     if (nomeAba === 'indicadores') analytics.carregarIndicadores();
     if (nomeAba === 'feriados') feriados.carregarFeriados();
     if (nomeAba === 'faltas') { faltas.iniciarAcoesEmLote(); faltas.carregarFaltas(); }
+    if (nomeAba === 'atrasos') { atrasos.iniciarAtrasos(); atrasos.carregarAtrasos(); }
+    if (nomeAba === 'trocas') { trocas.iniciarTrocas(); trocas.carregarTrocas(); }
     if (nomeAba === 'admin-geral') { admin.carregarConfigHorasExtras(); admin.carregarListaAdmins(); admin.iniciarZonaDePerigo(); }
     if (nomeAba === 'biometria') biometria.renderizarAbaBiometria();
     if (nomeAba === 'auditoria') { auditoria.iniciarAuditoria().then(() => auditoria.carregarAuditoria()); }

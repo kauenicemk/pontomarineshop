@@ -38,4 +38,29 @@ app.get('/meu-relatorio/:id', exigirTotem, async (c) => {
     return c.json(relatorio);
 });
 
+/**
+ * ATESTADOS do período — dia inteiro e atestado de horas na mesma lista, com a
+ * contagem por colaborador já ordenada de quem mais apresentou.
+ */
+app.get('/atestados', exigirAutorizacaoAdmin, async (c) => {
+    const atestadosService = require('../services/atestados.service');
+    const inicio = exigirData(c.req.query('inicio'), 'inicio');
+    const fim = exigirData(c.req.query('fim'), 'fim');
+
+    const [lista, porFuncionario] = await Promise.all([
+        atestadosService.listar({ dataInicio: inicio, dataFim: fim }),
+        atestadosService.contarPorFuncionario({ dataInicio: inicio, dataFim: fim })
+    ]);
+
+    return c.json({
+        periodo: { inicio, fim },
+        total: lista.length,
+        totalDiasInteiros: lista.filter((a) => a.tipo === 'dia_inteiro').length,
+        totalDeHoras: lista.filter((a) => a.tipo === 'horas').length,
+        colaboradoresComAtestado: porFuncionario.length,
+        porFuncionario,
+        lista
+    });
+});
+
 module.exports = app;

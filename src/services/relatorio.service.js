@@ -36,15 +36,15 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
 
     const trocasService = require('./trocasDia.service');
     const tratativasService = require('./tratativas.service');
+    const escalaSabadoService = require('./escalaSabado.service');
 
-    const [feriados, percentuais, jornadasPorFuncionario, trocas, tratativas] = await Promise.all([
+    const [feriados, percentuais, jornadasPorFuncionario, trocas, tratativas, sabadosEscalados] = await Promise.all([
         feriadosService.buscarComoConjunto({ dataInicio, dataFim }),
         buscarPercentuaisHorasExtras(),
         funcionariosService.buscarJornadaDeTodos(),
         trocasService.mapaDoPeriodo({ dataInicio, dataFim }),
-        dataInicio && dataFim
-            ? tratativasService.mapaDoPeriodo({ dataInicio, dataFim })
-            : Promise.resolve({})
+        tratativasService.mapaDoPeriodo({ dataInicio, dataFim }),
+        escalaSabadoService.conjuntoDoPeriodo({ dataInicio, dataFim })
     ]);
 
     const agrupado = {};
@@ -84,6 +84,7 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
             percentuaisHorasExtras: percentuais,
             jornadaPorGrupo: jornadasPorFuncionario[dia.funcionarioId] || {},
             troca: trocas[chave] || null,
+            escaladoNoSabado: sabadosEscalados.has(chave),
             tratativa: tratativas[chave] || null
         });
     });
@@ -97,20 +98,27 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
  */
 async function relatorioIndividual(funcionarioId, { dataInicio, dataFim } = {}) {
     const ausenciasService = require('./ausencias.service');
+    const atestadosService = require('./atestados.service');
     const { calcularViolacoesInterjornada } = require('./calculoJornada.service');
 
-    const [funcionario, dias, faltasInfo] = await Promise.all([
+    const [funcionario, dias, faltasInfo, resumoAtestados] = await Promise.all([
         funcionariosService.buscarPorId(funcionarioId),
         relatorioCalculado({ dataInicio, dataFim, funcionarioId }),
-        ausenciasService.calcularFaltas({ dataInicio, dataFim })
+        ausenciasService.calcularFaltas({ dataInicio, dataFim }),
+        dataInicio && dataFim
+            ? atestadosService.resumoDoFuncionario({ funcionarioId, dataInicio, dataFim })
+            : Promise.resolve({ total: 0, diasInteiros: 0, deHoras: 0, minutosAbonados: 0, datas: [] })
     ]);
 
     if (!funcionario) return null;
 
     let somaSaldoMinutos = 0;
     let somaAtrasoMinutos = 0;
+    let somaAtrasoDescontavelMinutos = 0;
     let diasComAtraso = 0;
+    let diasComAtrasoSemDesconto = 0;
     let somaExtraMinutos = 0;
+    let somaExtraPagaMinutos = 0;
     let somaNoturnoMinutos = 0;
     let diasTrabalhados = 0;
     let valorExtraTotal = 0;
@@ -122,8 +130,11 @@ async function relatorioIndividual(funcionarioId, { dataInicio, dataFim } = {}) 
             diasTrabalhados += 1;
         }
         if (d.atrasoMinutos > 0) diasComAtraso += 1;
+        if (d.atrasoDentroDoLimiar) diasComAtrasoSemDesconto += 1;
         somaAtrasoMinutos += d.atrasoMinutos;
+        somaAtrasoDescontavelMinutos += d.atrasoDescontavelMinutos || 0;
         somaExtraMinutos += d.horas_extras.minutos || 0;
+        somaExtraPagaMinutos += d.horas_extras.minutosPagos || 0;
         somaNoturnoMinutos += d.horas_noturnas.minutos || 0;
         if (d.horas_extras.valor) valorExtraTotal += d.horas_extras.valor;
         if (d.horas_noturnas.valor) valorNoturnoTotal += d.horas_noturnas.valor;
@@ -143,17 +154,28 @@ async function relatorioIndividual(funcionarioId, { dataInicio, dataFim } = {}) 
         diasTrabalhados,
         saldoTotal: minutosParaStr(somaSaldoMinutos, true),
         saldoTotalMinutos: somaSaldoMinutos,
+        // Atraso REGISTRADO x atraso DESCONTADO: o primeiro é o retrato da disciplina,
+        // o segundo é o que a folha usa. Andam separados desde o limiar de 11 min/dia.
         atrasoTotal: minutosParaStr(somaAtrasoMinutos),
         atrasoTotalMinutos: somaAtrasoMinutos,
+        atrasoDescontadoTotal: minutosParaStr(somaAtrasoDescontavelMinutos),
+        atrasoDescontadoTotalMinutos: somaAtrasoDescontavelMinutos,
         diasComAtraso,
+        diasComAtrasoSemDesconto,
+        // Mesma lógica do lado das extras: registradas x efetivamente pagas.
         horasExtrasTotal: minutosParaStr(somaExtraMinutos),
         horasExtrasTotalMinutos: somaExtraMinutos,
+        horasExtrasPagasTotal: minutosParaStr(somaExtraPagaMinutos),
+        horasExtrasPagasTotalMinutos: somaExtraPagaMinutos,
         valorExtraTotal: funcionario.salario_base != null ? +valorExtraTotal.toFixed(2) : null,
         horasNoturnasTotal: minutosParaStr(somaNoturnoMinutos),
         horasNoturnasTotalMinutos: somaNoturnoMinutos,
         valorNoturnoTotal: funcionario.salario_base != null ? +valorNoturnoTotal.toFixed(2) : null,
         totalFaltas: faltasDoFuncionario.length,
+        // Faltas de sábado escalado entram na contagem (disciplina) mas nunca na folha.
+        totalFaltasDescontaveis: faltasDoFuncionario.filter((f) => f.descontavel !== false).length,
         faltas: faltasDoFuncionario,
+        atestados: resumoAtestados,
         violacoesInterjornada,
         dias
     };

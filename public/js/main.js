@@ -25,6 +25,8 @@ import * as auditoria from './tabs/auditoria.js';
 import * as editorPontos from './tabs/editorPontos.js';
 import * as atrasos from './tabs/atrasos.js';
 import * as trocas from './tabs/trocas.js';
+import * as escalaSabado from './tabs/escalaSabado.js';
+import * as atestados from './tabs/atestados.js';
 
 const ehModoAdmin = window.location.pathname.startsWith('/admin');
 
@@ -198,6 +200,8 @@ function carregarConteudoAdminAba(nomeAba) {
     if (nomeAba === 'faltas') { faltas.iniciarAcoesEmLote(); faltas.carregarFaltas(); }
     if (nomeAba === 'atrasos') { atrasos.iniciarAtrasos(); atrasos.carregarAtrasos(); }
     if (nomeAba === 'trocas') { trocas.iniciarTrocas(); trocas.carregarTrocas(); }
+    if (nomeAba === 'escala') { escalaSabado.iniciarEscalaSabado(); escalaSabado.carregarEscalaSabado(); }
+    if (nomeAba === 'atestados') { atestados.iniciarAtestados(); atestados.carregarAtestados(); }
     if (nomeAba === 'admin-geral') { admin.carregarConfigHorasExtras(); admin.carregarListaAdmins(); admin.iniciarZonaDePerigo(); }
     if (nomeAba === 'biometria') biometria.renderizarAbaBiometria();
     if (nomeAba === 'auditoria') { auditoria.iniciarAuditoria().then(() => auditoria.carregarAuditoria()); }

@@ -135,6 +135,15 @@ export const api = {
     tratarAtrasosEmLote: (dados) => chamar('/api/ocorrencias/atrasos/lote', { method: 'POST', body: dados, admin: true }),
     removerTratativa: (id) => chamar(`/api/ocorrencias/atrasos/${id}`, { method: 'DELETE', admin: true }),
 
+    // Atestados (dia inteiro + horas na mesma visão)
+    listarAtestados: (inicio, fim) => chamar(`/api/atestados?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
+
+    // Escala de sábado (estagiário escalado num sábado específico)
+    listarEscalaSabado: (inicio, fim) => chamar(`/api/ocorrencias/escala-sabado?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
+    proximosSabados: () => chamar('/api/ocorrencias/escala-sabado/proximos', { admin: true }),
+    escalarSabado: (dados) => chamar('/api/ocorrencias/escala-sabado', { method: 'POST', body: dados, admin: true }),
+    removerEscalaSabado: (id) => chamar(`/api/ocorrencias/escala-sabado/${id}`, { method: 'DELETE', admin: true }),
+
     // People Analytics
     indicadoresGerais: (inicio, fim) => chamar(`/api/analytics/indicadores?${new URLSearchParams({ inicio, fim })}`, { admin: true })
 };

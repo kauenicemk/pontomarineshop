@@ -241,11 +241,12 @@ test('relatório do dia: atraso tolerado nao aparece e nao desconta', () => {
         jornadaPorGrupo: JORNADA_PADRAO
     });
 
-    assert.strictEqual(dia.atrasoMinutos, 0, 'dentro da tolerancia: nao conta como atraso');
-    assert.strictEqual(dia.atraso, '00:00');
-    assert.strictEqual(dia.saldoMinutos, 0, 'e tambem nao desconta do saldo');
-    assert.strictEqual(dia.entradaDentroDaTolerancia, true);
-    assert.strictEqual(dia.minutosAtrasoEntradaBruto, 8, 'o atraso real fica registrado para consulta');
+    assert.strictEqual(dia.atrasoMinutos, 8, 'o atraso APARECE no relatorio, para o gestor ver a disciplina');
+    assert.strictEqual(dia.atraso, '00:08');
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 0, 'mas nao pesa na folha: 8 min esta abaixo do limiar de 11');
+    assert.strictEqual(dia.saldoMinutos, 0, 'e o saldo fica intacto');
+    assert.strictEqual(dia.atrasoDentroDoLimiar, true);
+    assert.strictEqual(dia.minutosAtrasoEntradaBruto, 8);
 });
 
 test('relatório do dia: atraso acima da tolerância conta e desconta', () => {
@@ -260,11 +261,12 @@ test('relatório do dia: atraso acima da tolerância conta e desconta', () => {
     });
 
     assert.strictEqual(dia.atrasoMinutos, 25);
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 25, 'acima do limiar, desconta por inteiro');
     assert.strictEqual(dia.saldoMinutos, -25);
-    assert.strictEqual(dia.entradaDentroDaTolerancia, false);
+    assert.strictEqual(dia.atrasoDentroDoLimiar, false);
 });
 
-test('relatório do dia: almoço estourado conta como atraso E desconta do saldo', () => {
+test('relatório do dia: almoço estourado abaixo do limiar registra mas não desconta', () => {
     const dia = calc.montarRelatorioDia({
         funcionario: { id: 1, nome: 'Teste', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
         dataISO: QUARTA,
@@ -277,8 +279,8 @@ test('relatório do dia: almoço estourado conta como atraso E desconta do saldo
     });
 
     assert.strictEqual(dia.atrasoAlmocoMinutos, 9, '70 min de almoco: 10 acima do combinado menos 1 de folga');
-    assert.strictEqual(dia.atrasoMinutos, 9);
-    assert.strictEqual(dia.saldoMinutos, -9, 'desconta o mesmo que conta como atraso: o minuto de folga e devolvido');
+    assert.strictEqual(dia.atrasoMinutos, 9, 'aparece no relatorio');
+    assert.strictEqual(dia.saldoMinutos, 0, '9 min esta abaixo do limiar de 11: nao desconta');
 });
 
 test('relatório do dia: entrada tolerada + almoço estourado somam corretamente', () => {
@@ -293,8 +295,8 @@ test('relatório do dia: entrada tolerada + almoço estourado somam corretamente
         jornadaPorGrupo: JORNADA_PADRAO
     });
 
-    assert.strictEqual(dia.atrasoMinutos, 4, 'so o atraso do almoco conta');
-    assert.strictEqual(dia.saldoMinutos, -4, 'atraso e desconto batem: 5 da entrada + 1 do almoco sao devolvidos');
+    assert.strictEqual(dia.atrasoMinutos, 9, 'entrada e almoco SOMAM: 5 + 4');
+    assert.strictEqual(dia.saldoMinutos, 0, 'a soma deu 9, abaixo do limiar de 11: registra sem descontar');
 });
 
 test('trabalho em feriado vira hora extra de 100% sem meta', () => {
@@ -313,18 +315,23 @@ test('trabalho em feriado vira hora extra de 100% sem meta', () => {
     assert.strictEqual(dia.horas_extras.valor, 80, '4h × R$10/h × 2 (100% de adicional)');
 });
 
-test('regra geral: o que conta como atraso e o que desconta do saldo batem', () => {
+test('regra geral do atraso: registra sempre, desconta so a partir de 11 min no dia', () => {
+    // registrado = o que aparece no relatorio (entrada + almoco somados)
+    // descontado = o que pesa na folha (o total, mas so quando o total chega a 11)
     const cenarios = [
-        { entrada: '08:00', retorno: '13:00', esperado: 0 },
-        { entrada: '08:08', retorno: '13:00', esperado: 0 },   // entrada tolerada
-        { entrada: '08:00', retorno: '13:01', esperado: 0 },   // almoco na folga
-        { entrada: '08:08', retorno: '13:01', esperado: 0 },   // os dois tolerados
-        { entrada: '08:00', retorno: '13:06', esperado: 5 },   // 6 de almoco - 1 de folga
-        { entrada: '08:20', retorno: '13:00', esperado: 20 },  // entrada acima da tolerancia
-        { entrada: '08:20', retorno: '13:06', esperado: 25 }   // os dois estourados
+        { entrada: '08:00', retorno: '13:00', registrado: 0,  descontado: 0 },
+        { entrada: '08:08', retorno: '13:00', registrado: 8,  descontado: 0 },  // so entrada, abaixo do limiar
+        { entrada: '08:00', retorno: '13:01', registrado: 0,  descontado: 0 },  // 1 min de almoco esta na folga
+        { entrada: '08:08', retorno: '13:01', registrado: 8,  descontado: 0 },  // 8 + 0
+        { entrada: '08:00', retorno: '13:06', registrado: 5,  descontado: 0 },  // 6 de almoco - 1 de folga
+        { entrada: '08:08', retorno: '13:06', registrado: 13, descontado: 13 }, // 8 + 5 estoura o limiar
+        { entrada: '08:10', retorno: '13:02', registrado: 11, descontado: 11 }, // exatamente 11: ja desconta
+        { entrada: '08:10', retorno: '13:01', registrado: 10, descontado: 0 },  // exatamente 10: ainda nao
+        { entrada: '08:20', retorno: '13:00', registrado: 20, descontado: 20 }, // entrada sozinha estoura
+        { entrada: '08:20', retorno: '13:06', registrado: 25, descontado: 25 }
     ];
 
-    cenarios.forEach(({ entrada, retorno, esperado }) => {
+    cenarios.forEach(({ entrada, retorno, registrado, descontado }) => {
         const dia = calc.montarRelatorioDia({
             funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
             dataISO: QUARTA,
@@ -334,8 +341,9 @@ test('regra geral: o que conta como atraso e o que desconta do saldo batem', () 
             percentuaisHorasExtras: PERCENTUAIS,
             jornadaPorGrupo: JORNADA_PADRAO
         });
-        assert.strictEqual(dia.atrasoMinutos, esperado, `atraso de ${entrada}/${retorno}`);
-        assert.strictEqual(dia.saldoMinutos, esperado === 0 ? 0 : -esperado, `saldo de ${entrada}/${retorno} deve espelhar o atraso`);
+        assert.strictEqual(dia.atrasoMinutos, registrado, `atraso registrado de ${entrada}/${retorno}`);
+        assert.strictEqual(dia.atrasoDescontavelMinutos, descontado, `atraso descontado de ${entrada}/${retorno}`);
+        assert.strictEqual(dia.saldoMinutos, descontado === 0 ? 0 : -descontado, `saldo de ${entrada}/${retorno}`);
     });
 });
 
@@ -476,4 +484,117 @@ test('tratativa em data futura é recusada', () => {
 test('tratativa em data passada ou de hoje é aceita', () => {
     assert.doesNotThrow(() => tratativas.exigirDataNaoFutura('2026-07-30', '2026-07-30'));
     assert.doesNotThrow(() => tratativas.exigirDataNaoFutura('2026-07-01', '2026-07-30'));
+});
+
+/* ===================== Limiar de pagamento da hora extra ===================== */
+
+function diaComSaida(horaSaida, salario) {
+    return calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: salario ?? null },
+        dataISO: QUARTA,
+        pontos: { ENTRADA: '08:00', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:00', SAIDA: horaSaida },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO
+    });
+}
+
+test('extra de 7 min fica registrada mas não é paga', () => {
+    const dia = diaComSaida('17:07', 2200);
+    assert.strictEqual(dia.horas_extras.minutos, 7, 'os minutos continuam visiveis para acompanhar disciplina');
+    assert.strictEqual(dia.horas_extras.tempo, '00:07');
+    assert.strictEqual(dia.horas_extras.minutosPagos, 0, 'abaixo de 11 min nao vira dinheiro');
+    assert.strictEqual(dia.horas_extras.valor, null);
+    assert.strictEqual(dia.horas_extras.abaixoDoLimiar, true);
+});
+
+test('extra de exatamente 11 min já é paga', () => {
+    const dia = diaComSaida('17:11', 2200);
+    assert.strictEqual(dia.horas_extras.minutos, 11);
+    assert.strictEqual(dia.horas_extras.minutosPagos, 11);
+    assert.strictEqual(dia.horas_extras.abaixoDoLimiar, false);
+    assert.ok(dia.horas_extras.valor > 0, 'gera valor em R$');
+});
+
+test('extra de 10 min ainda não é paga (limiar é "mais de 10")', () => {
+    const dia = diaComSaida('17:10', 2200);
+    assert.strictEqual(dia.horas_extras.minutos, 10);
+    assert.strictEqual(dia.horas_extras.minutosPagos, 0);
+    assert.strictEqual(dia.horas_extras.valor, null);
+});
+
+test('o saldo/banco de horas registra a extra curta mesmo sem pagamento', () => {
+    const dia = diaComSaida('17:07');
+    assert.strictEqual(dia.saldoMinutos, 7, 'os 7 min ficam no banco de horas; o que muda e so o pagamento');
+});
+
+/* ===================== Escala de sábado ===================== */
+
+// Nesta jornada, sábado está como "não trabalha" — o caso do estagiário.
+const JORNADA_SEM_SABADO = {
+    ...JORNADA_PADRAO,
+    sabado: { horario_entrada: '08:00', meta_minutos: 240, trabalha: false }
+};
+
+function diaDeSabado(escalado) {
+    return calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'E', emoji: 'E', regime: 'ESTAGIARIO', horas_diarias: '6h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: SABADO,
+        pontos: { ENTRADA: '08:00', SAIDA: '12:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_SEM_SABADO,
+        escaladoNoSabado: escalado
+    });
+}
+
+test('sábado SEM escala não tem meta nem horário combinado', () => {
+    const dia = diaDeSabado(false);
+    assert.strictEqual(dia.horario_combinado, '---', 'nao e dia de trabalho dessa pessoa');
+    assert.strictEqual(dia.saldoMinutos, null, 'sem meta nao ha saldo: as 4h viram credito puro');
+    assert.strictEqual(dia.horas_extras.minutos, 240);
+    assert.strictEqual(dia.escaladoNoSabado, false);
+});
+
+test('sábado COM escala passa a valer a jornada de sábado', () => {
+    const dia = diaDeSabado(true);
+    assert.strictEqual(dia.horario_combinado, '08:00', 'a config do sabado passa a valer naquela data');
+    assert.strictEqual(dia.saldoMinutos, 0, '4h trabalhadas contra meta de 4h');
+    assert.strictEqual(dia.horas_extras.minutos, 0, 'dentro da meta nao ha extra');
+    assert.strictEqual(dia.escaladoNoSabado, true);
+});
+
+test('sábado escalado gera atraso normalmente', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'E', emoji: 'E', regime: 'ESTAGIARIO', horas_diarias: '6h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: SABADO,
+        pontos: { ENTRADA: '08:20', SAIDA: '12:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_SEM_SABADO,
+        escaladoNoSabado: true
+    });
+    assert.strictEqual(dia.atrasoMinutos, 20, 'escalado, chegar tarde conta igual a qualquer dia');
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 20);
+});
+
+test('escala de sábado só aceita sábado de verdade', async () => {
+    const escala = require('../src/services/escalaSabado.service');
+    // QUARTA = 2026-07-22. Sem tocar no banco: a validação do dia da semana vem antes.
+    await assert.rejects(
+        () => escala.criar({ funcionario_id: 1, data: QUARTA }),
+        /só vale para sábados/
+    );
+});
+
+test('os próximos sábados sugeridos caem todos num sábado', () => {
+    const escala = require('../src/services/escalaSabado.service');
+    const sabados = escala.proximosSabados(8);
+    assert.strictEqual(sabados.length, 8);
+    sabados.forEach((d) => {
+        assert.strictEqual(new Date(`${d}T12:00:00Z`).getUTCDay(), 6, `${d} deveria ser sabado`);
+    });
 });

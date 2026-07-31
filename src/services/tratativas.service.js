@@ -30,7 +30,9 @@ async function listar({ dataInicio, dataFim } = {}) {
          FROM tratativas_atraso t JOIN funcionarios f ON f.id = t.funcionario_id
          WHERE t.data BETWEEN ? AND ?
          ORDER BY t.data DESC, f.nome ASC`,
-        [dataInicio, dataFim]
+        // Período aberto sem datas — mesmo motivo da escala de sábado: um abono
+        // precisa valer no cálculo mesmo quando o relatório é pedido sem filtro.
+        [dataInicio || '0000-01-01', dataFim || '9999-12-31']
     );
 }
 

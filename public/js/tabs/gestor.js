@@ -72,6 +72,42 @@ export async function carregarGavetasGerais() {
     }
 }
 
+/**
+ * Faixa de atestados acima da tabela. O relatório coletivo é dia a dia, então a
+ * contagem por pessoa não cabe numa coluna — vem como resumo, ordenado de quem
+ * mais apresentou, que é a leitura que interessa.
+ */
+function renderizarResumoAtestados(dados) {
+    const alvo = document.getElementById('gestor-resumo-atestados');
+    if (!alvo) return;
+
+    if (!dados || dados.total === 0) {
+        alvo.classList.add('escondido');
+        alvo.innerHTML = '';
+        return;
+    }
+
+    const topo = dados.porFuncionario
+        .map((r) => `${escapeHtml(primeiroNome(r.nome))} (${r.total})`)
+        .join(' · ');
+
+    alvo.classList.remove('escondido');
+    alvo.innerHTML = `<b>${dados.total} atestado(s)</b> no período — ${dados.totalDiasInteiros} de dia inteiro,
+        ${dados.totalDeHoras} de horas. ${topo}`;
+}
+
+/** Marca no relatório coletivo o que faz aquele dia fugir do padrão. */
+function marcaDoDia(dia) {
+    const partes = [];
+    if (dia.troca) partes.push(dia.troca.papel === 'folga' ? 'folga trocada' : 'compensação');
+    if (dia.escaladoNoSabado) partes.push('sábado escalado');
+    if (dia.tratativa) {
+        const rotulos = { atraso_abonado: 'abonado', atraso_registrado: 'justificado', atestado_horas: 'atestado' };
+        partes.push(rotulos[dia.tratativa.tipo] || dia.tratativa.tipo);
+    }
+    return partes.length ? ` <span class="badge-manual">${escapeHtml(partes.join(', '))}</span>` : '';
+}
+
 export async function renderizarRelatorioGestor() {
     const tbody = document.getElementById('tabela-gestor-linhas');
     const inicio = document.getElementById('filtro-inicio').value;
@@ -82,6 +118,18 @@ export async function renderizarRelatorioGestor() {
     } catch (e) {
         if (e.message !== 'cancelado') toast(e.message, 'erro');
         return;
+    }
+
+    // Contagem de atestados do período. Falha aqui não pode derrubar o relatório:
+    // é informação complementar, e o gestor precisa do quadro de horas de qualquer jeito.
+    if (inicio && fim) {
+        try {
+            renderizarResumoAtestados(await api.listarAtestados(inicio, fim));
+        } catch (_) {
+            renderizarResumoAtestados(null);
+        }
+    } else {
+        renderizarResumoAtestados(null);
     }
 
     tbody.innerHTML = cacheRelatorioGestor.length ? '' : '<tr><td colspan="12" style="color:var(--texto-mudo)">Nenhum registro no período.</td></tr>';
@@ -97,10 +145,11 @@ export async function renderizarRelatorioGestor() {
         const linha = document.createElement('tr');
         linha.innerHTML = `
             <td>${escapeHtml(dia.emoji)} ${escapeHtml(primeiroNome(dia.nome))}</td>
-            <td>${escapeHtml(dia.data.substring(0, 5))}${dia.ehFeriado ? ' (fer.)' : ''}</td>
+            <td style="white-space:normal">${escapeHtml(dia.data.substring(0, 5))}${dia.ehFeriado ? ' (fer.)' : ''}${marcaDoDia(dia)}</td>
             <td>${cel('ENTRADA')}</td><td>${cel('ALMOCO_SAIDA')}</td><td>${cel('ALMOCO_RETORNO')}</td><td>${cel('SAIDA')}</td>
             <td><b>${escapeHtml(dia.tempo_trabalhado)}</b></td>
-            <td style="color:${dia.atraso !== '00:00' ? 'var(--vermelho)' : 'var(--texto)'}"><b>${escapeHtml(dia.atraso)}</b></td>
+            <td style="color:${dia.atrasoDescontavelMinutos > 0 ? 'var(--vermelho)' : (dia.atrasoMinutos > 0 ? 'var(--amarelo)' : 'var(--texto)')}"
+                title="${dia.atrasoDentroDoLimiar ? 'Abaixo de 11 min no dia: registrado, sem desconto' : ''}"><b>${escapeHtml(dia.atraso)}</b></td>
             <td style="color:${dia.saldo.startsWith('+') ? 'var(--verde)' : 'var(--vermelho)'}"><b>${escapeHtml(dia.saldo)}</b></td>
             <td>${extra60}</td>
             <td>${extra100}</td>
@@ -120,12 +169,18 @@ export function exportarPlanilhaParaExcel() {
     }
 
     let csv = '\ufeff';
-    csv += 'Nome;Data;Horario Combinado;Entrada;Saida Almoco;Retorno Almoco;Saida Final;Tempo Trabalhado;Atrasos;Saldo;Hora Extra 60%;Hora Extra 100%;Horas Noturnas\n';
+    csv += 'Nome;Data;Horario Combinado;Entrada;Saida Almoco;Retorno Almoco;Saida Final;Tempo Trabalhado;Atraso Registrado;Atraso Descontado;Saldo;Hora Extra 60%;Hora Extra 100%;Extra Pagavel;Horas Noturnas;Ocorrencia\n';
     cacheRelatorioGestor.forEach((dia) => {
         const p = dia.pontos;
         const extra60 = dia.horas_extras.tipo === 'dia_util' ? dia.horas_extras.tempo : '00:00';
         const extra100 = dia.horas_extras.tipo === 'domingo_feriado' ? dia.horas_extras.tempo : '00:00';
-        csv += `${dia.nome};${dia.data};${dia.horario_combinado};${p.ENTRADA || '---'};${p.ALMOCO_SAIDA || '---'};${p.ALMOCO_RETORNO || '---'};${p.SAIDA || '---'};${dia.tempo_trabalhado};${dia.atraso};${dia.saldo};${extra60};${extra100};${dia.horas_noturnas.tempo}\n`;
+        const min = (m) => `${String(Math.floor((m || 0) / 60)).padStart(2, '0')}:${String((m || 0) % 60).padStart(2, '0')}`;
+        const ocorrencia = [
+            dia.troca ? (dia.troca.papel === 'folga' ? 'folga trocada' : 'compensacao') : '',
+            dia.escaladoNoSabado ? 'sabado escalado' : '',
+            dia.tratativa ? dia.tratativa.tipo : ''
+        ].filter(Boolean).join(' + ');
+        csv += `${dia.nome};${dia.data};${dia.horario_combinado};${p.ENTRADA || '---'};${p.ALMOCO_SAIDA || '---'};${p.ALMOCO_RETORNO || '---'};${p.SAIDA || '---'};${dia.tempo_trabalhado};${dia.atraso};${min(dia.atrasoDescontavelMinutos)};${dia.saldo};${extra60};${extra100};${min(dia.horas_extras.minutosPagos)};${dia.horas_noturnas.tempo};${ocorrencia}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

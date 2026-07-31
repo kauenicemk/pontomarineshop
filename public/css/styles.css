@@ -234,6 +234,28 @@ a { color: var(--accent); }
 .selo-registrado { background: rgba(245, 179, 49, .14); color: var(--amarelo); }
 .selo-troca { background: var(--accent-suave); color: var(--accent-texto); }
 
+/* ===================== Escala de sábado ===================== */
+
+/* Lista de colaboradores com checkbox no painel lateral. Rola sozinha porque o
+   painel é estreito e a equipe pode crescer — sem isso o botão de salvar some
+   abaixo da dobra à medida que gente é cadastrada. */
+.lista-selecao {
+    max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+    border: 1px solid var(--border); border-radius: var(--raio-sm); padding: 8px;
+    background: var(--card-2);
+}
+.item-escala {
+    padding: 6px 8px; border-radius: var(--raio-sm); cursor: pointer;
+    color: var(--texto); font-size: 12.5px; transition: background .15s ease;
+}
+.item-escala:hover { background: var(--card); }
+
+/* Cabeçalho de grupo dentro da tabela (ex: "Sábado, 08/08 — 3 escalados"). */
+.linha-grupo td {
+    background: var(--card-2); color: var(--texto-mudo);
+    font-size: 12px; letter-spacing: .2px; padding-top: 12px;
+}
+
 /* O trilho e o botão do switch. A bolinha desliza com um easing levemente
    elástico — é a única animação "divertida" do sistema, e serve de confirmação
    imediata de que o clique foi registrado. */
@@ -854,6 +876,7 @@ tr.selecionada { background: var(--accent-suave); }
 .espelho-tabela th, .espelho-tabela td { border: 1px solid var(--border); padding: 6px; text-align: center; }
 .espelho-resumo-final { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; margin-bottom: 18px; padding-top: 12px; border-top: 1px dashed var(--border); }
 .espelho-resumo-final p { margin: 0; }
+.espelho-nota { font-size: 11px; color: var(--texto-mudo); line-height: 1.5; margin: 0 0 18px; }
 .espelho-confirmacao { text-align: center; margin-bottom: 22px; }
 .espelho-confirmado { color: var(--verde); font-weight: 700; font-size: 13px; }
 .espelho-assinatura { text-align: center; margin-top: 32px; }

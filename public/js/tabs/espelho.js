@@ -108,9 +108,20 @@ async function carregarConteudoEspelho(nomeFuncionario, buscarRelatorio) {
         <div class="espelho-resumo-final">
             <p><b>Saldo do mês:</b> ${escapeHtml(relatorio.saldoTotal)}</p>
             <p><b>Total de atrasos:</b> ${escapeHtml(relatorio.atrasoTotal)}</p>
+            <p><b>Atraso descontado:</b> ${escapeHtml(relatorio.atrasoDescontadoTotal)}</p>
             <p><b>Horas extras:</b> ${escapeHtml(relatorio.horasExtrasTotal)}</p>
+            <p><b>Horas extras pagáveis:</b> ${escapeHtml(relatorio.horasExtrasPagasTotal)}</p>
             <p><b>Faltas não justificadas:</b> ${relatorio.totalFaltas}</p>
         </div>
+
+        <!-- O espelho é assinado pelo colaborador: se ele vê "atraso 00:08" e o saldo
+             intacto, a regra precisa estar escrita aqui, não só no painel do gestor. -->
+        <p class="espelho-nota">
+            Atraso de até 10 minutos no dia (entrada + almoço somados) é registrado para
+            acompanhamento de pontualidade, mas não desconta do saldo nem da folha. Da mesma
+            forma, o que passa da jornada em até 10 minutos fica registrado sem ser pago
+            como hora extra.
+        </p>
 
         <div class="espelho-confirmacao">
             ${confirmacao.confirmado

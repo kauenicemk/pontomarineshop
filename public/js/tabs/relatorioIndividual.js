@@ -96,13 +96,33 @@ export async function carregarRelatorioIndividual() {
         <div class="cartoes-resumo">
             ${cartaoResumo('Saldo do mês', r.saldoTotal, corSaldo)}
             ${cartaoResumo('Dias trabalhados', String(r.diasTrabalhados))}
-            ${cartaoResumo('Total de atrasos', r.atrasoTotal, r.atrasoTotalMinutos > 0 ? 'var(--vermelho)' : undefined)}
+            ${cartaoResumo('Atraso registrado', r.atrasoTotal, r.atrasoTotalMinutos > 0 ? 'var(--amarelo)' : undefined)}
+            ${cartaoResumo('Atraso descontado', r.atrasoDescontadoTotal, r.atrasoDescontadoTotalMinutos > 0 ? 'var(--vermelho)' : 'var(--verde)')}
             ${cartaoResumo('Dias com atraso', String(r.diasComAtraso))}
             ${cartaoResumo('Horas extras', r.horasExtrasTotal, 'var(--verde)')}
+            ${cartaoResumo('Extras pagáveis', r.horasExtrasPagasTotal, 'var(--verde)')}
+            ${cartaoResumo('Atestados', String(r.atestados ? r.atestados.total : 0), (r.atestados && r.atestados.total > 0) ? 'var(--azul)' : undefined)}
             ${cartaoResumo('Horas noturnas', r.horasNoturnasTotal, 'var(--azul)')}
             ${cartaoResumo('Faltas não justificadas', String(r.totalFaltas), r.totalFaltas > 0 ? 'var(--vermelho)' : 'var(--verde)')}
             ${cartaoResumo('Violações interjornada', String(r.violacoesInterjornada.length), r.violacoesInterjornada.length > 0 ? 'var(--vermelho)' : 'var(--verde)')}
         </div>
+        ${(r.atrasoTotalMinutos > r.atrasoDescontadoTotalMinutos || r.horasExtrasTotalMinutos > r.horasExtrasPagasTotalMinutos) ? `
+            <div class="aviso-info">
+                ${r.diasComAtrasoSemDesconto > 0
+                    ? `<b>${r.diasComAtrasoSemDesconto} dia(s)</b> tiveram atraso abaixo de 11 minutos: aparecem no relatório para acompanhar pontualidade, mas não descontam do saldo nem da folha. `
+                    : ''}
+                ${r.horasExtrasTotalMinutos > r.horasExtrasPagasTotalMinutos
+                    ? `Extras de até 10 minutos no dia ficam registradas, mas não são pagas — a diferença entre "Horas extras" e "Extras pagáveis".`
+                    : ''}
+            </div>
+        ` : ''}
+        ${r.atestados && r.atestados.total > 0 ? `
+            <div class="aviso-info">
+                <b>${r.atestados.total} atestado(s)</b> no período:
+                ${r.atestados.diasInteiros} de dia inteiro e ${r.atestados.deHoras} de horas${r.atestados.minutosAbonados > 0
+                    ? ` (${Math.floor(r.atestados.minutosAbonados / 60)}h${String(r.atestados.minutosAbonados % 60).padStart(2, '0')} abonadas)` : ''}.
+            </div>
+        ` : ''}
         ${r.funcionario.temSalarioCadastrado ? `
             <div class="cartoes-resumo">
                 ${cartaoResumo('Valor de hora extra', formatarReais(r.valorExtraTotal), 'var(--amarelo)')}

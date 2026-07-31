@@ -87,7 +87,11 @@ async function calcularFaltas({ dataInicio, dataFim }) {
     }
 
     const trocasService = require('./trocasDia.service');
-    const folgasCompensadas = await trocasService.folgasPorFuncionario({ dataInicio, dataFim });
+    const escalaSabadoService = require('./escalaSabado.service');
+    const [folgasCompensadas, sabadosEscalados] = await Promise.all([
+        trocasService.folgasPorFuncionario({ dataInicio, dataFim }),
+        escalaSabadoService.conjuntoDoPeriodo({ dataInicio, dataFim })
+    ]);
 
     const [funcionarios, feriadosSet, justificadas, entradasRegistradas, jornadasPorFuncionario] = await Promise.all([
         db.all(`SELECT id, emoji, nome, regime FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`),
@@ -121,18 +125,36 @@ async function calcularFaltas({ dataInicio, dataFim }) {
             const grupo = grupoDoDia(data);
             if (!grupo) return; // domingo nunca conta
 
+            const chave = `${f.id}_${data}`;
             const cfgGrupo = jornada[grupo];
-            if (!cfgGrupo || !cfgGrupo.trabalha) return; // esse dia da semana não é dia de trabalho pra essa pessoa
+
+            /**
+             * ESCALA DE SÁBADO (migração 0008). O estagiário tem sábado como "não trabalha",
+             * então normalmente esse dia é ignorado aqui. Escalado, o sábado vira dia de
+             * trabalho só para ele e só naquela data — e não aparecer gera falta.
+             *
+             * Essa falta é marcada como NÃO DESCONTÁVEL: entra no relatório de disciplina
+             * (foi um compromisso assumido e descumprido), mas não pode virar desconto na
+             * folha, porque o sábado nunca fez parte da jornada contratual.
+             */
+            const escaladoNesseSabado = grupo === 'sabado' && sabadosEscalados.has(chave);
+            const ehDiaDeTrabalho = escaladoNesseSabado || (cfgGrupo && cfgGrupo.trabalha);
+            if (!ehDiaDeTrabalho) return;
 
             totalDiasDeTrabalhoNoPeriodo += 1;
 
-            const chave = `${f.id}_${data}`;
             if (entradasPorChave.has(chave)) return;    // bateu ponto nesse dia
             if (justificadasPorChave.has(chave)) return; // ausência justificada
             // Folga trocada por outro dia: não é falta, o dia foi compensado.
             if (folgasCompensadas.has(chave)) return;
 
-            faltas.push({ funcionario_id: f.id, emoji: f.emoji, nome: f.nome, regime: f.regime, data, tipo: 'falta_injustificada' });
+            faltas.push({
+                funcionario_id: f.id, emoji: f.emoji, nome: f.nome, regime: f.regime, data,
+                tipo: 'falta_injustificada',
+                // Sábado escalado: conta como falta, mas não desconta na folha.
+                escalaSabado: escaladoNesseSabado,
+                descontavel: !escaladoNesseSabado
+            });
         });
     });
 

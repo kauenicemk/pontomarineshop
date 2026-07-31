@@ -31,7 +31,25 @@ const config = {
         // diferente da entrada.
         //   almoco de 60min + 1min  -> sem atraso
         //   almoco de 60min + 5min  -> atraso 00:04 (5 - 1) e saldo -4
-        toleranciaAlmocoMin: 1
+        toleranciaAlmocoMin: 1,
+
+        // LIMIAR DE DESCONTO DO ATRASO (regra da empresa).
+        // O atraso do DIA e a soma do atraso de entrada com o excedente de almoco.
+        // Ate 10 minutos no total: o atraso APARECE no relatorio (disciplina), mas nao
+        // desconta do saldo nem da folha. A partir de 11 minutos, desconta por inteiro.
+        //   entrada 8 + almoco 0  = 8   -> atraso 00:08 registrado, saldo intacto
+        //   entrada 8 + almoco 4  = 12  -> atraso 00:12 registrado E saldo -12
+        // Registrar sem descontar e proposital: o gestor precisa enxergar o padrao de
+        // quem chega raspando todo dia, mesmo sem prejuizo financeiro.
+        minimoAtrasoDescontavelMin: 11,
+
+        // LIMIAR DE PAGAMENTO DA HORA EXTRA (regra da empresa).
+        // So vira hora extra A PAGAR quem passar de 10 minutos alem da meta no dia.
+        // Abaixo disso os minutos continuam registrados e visiveis (o funcionario que
+        // sai 5 min depois todo dia aparece no relatorio), mas nao geram valor em R$.
+        //   7 minutos alem da meta  -> extra registrada 00:07, valor R$ 0,00
+        //   18 minutos alem da meta -> extra paga 00:18
+        minimoExtraPagavelMin: 11
     },
 
     // Percentuais padrao de hora extra e adicional noturno (tambem editaveis via tabela

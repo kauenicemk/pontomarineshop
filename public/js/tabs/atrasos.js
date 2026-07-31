@@ -81,7 +81,9 @@ export async function carregarAtrasos() {
     // Só entram dias com atraso REAL (acima da tolerância) ou que já foram tratados —
     // um dia abonado precisa continuar visível para dar para desfazer a decisão.
     atrasosCache = dias
-        .filter((d) => d.atrasoMinutos > 0 || d.minutosAtrasoEntradaBruto > 10 || d.tratativa)
+        // Qualquer atraso entra, inclusive o que nao desconta: e justamente o que o
+        // gestor precisa enxergar para acompanhar pontualidade.
+        .filter((d) => d.atrasoMinutos > 0 || d.tratativa)
         .filter((d) => !filtroRegime || (regimePorFuncionario[d.funcionarioId] || d.regime) === filtroRegime)
         .filter((d) => !filtroTurno || turnosPorFuncionario[d.funcionarioId] === filtroTurno)
         .sort((a, b) => b.dataISO.localeCompare(a.dataISO) || a.nome.localeCompare(b.nome));
@@ -108,9 +110,11 @@ function renderizarAtrasos() {
             ? `<span style="color:${tratada.tipo === 'atraso_registrado' ? 'var(--amarelo)' : 'var(--verde)'}">
                    ${escapeHtml(ROTULOS_TRATATIVA[tratada.tipo] || tratada.tipo)}</span>
                ${tratada.motivo ? `<br><span style="color:var(--texto-mudo); font-size:11.5px;">${escapeHtml(tratada.motivo)}</span>` : ''}`
-            : '<span style="color:var(--vermelho)">Sem tratativa</span>';
+            : (d.atrasoDentroDoLimiar
+                ? '<span style="color:var(--amarelo)">Registrado, sem desconto</span><br><span style="color:var(--texto-mudo); font-size:11.5px;">abaixo de 11 min no dia</span>'
+                : '<span style="color:var(--vermelho)">Sem tratativa — descontando</span>');
 
-        const atrasoMostrado = d.atrasoMinutos > 0 ? d.atraso : minutosParaTexto(d.minutosAtrasoEntradaBruto);
+        const atrasoMostrado = d.atraso;
 
         return `
             <tr data-indice="${i}">
@@ -121,7 +125,7 @@ function renderizarAtrasos() {
                 <td>${dataBR(d.dataISO)}</td>
                 <td>${escapeHtml(d.pontos.ENTRADA || '---')}</td>
                 <td>${escapeHtml(d.horario_combinado || '---')}</td>
-                <td style="color:${d.atrasoMinutos > 0 ? 'var(--vermelho)' : 'var(--texto-mudo)'}"><b>${escapeHtml(atrasoMostrado)}</b></td>
+                <td style="color:${d.atrasoDescontavelMinutos > 0 ? 'var(--vermelho)' : (d.atrasoMinutos > 0 ? 'var(--amarelo)' : 'var(--texto-mudo)')}"><b>${escapeHtml(atrasoMostrado)}</b></td>
                 <td style="white-space:normal">${situacao}</td>
                 <td><button class="action-btn btn-tratar" data-indice="${i}">${tratada ? 'Alterar' : 'Justificar'}</button></td>
             </tr>`;

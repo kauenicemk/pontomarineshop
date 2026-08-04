@@ -25,7 +25,7 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
 
     const linhas = await db.all(
         `SELECT f.id as f_id, f.emoji, f.nome, f.regime, f.horas_diarias,
-                f.tolerancia_almoco_min, f.almoco_flexivel, f.salario_base,
+                f.tolerancia_almoco_min, f.almoco_flexivel, f.entrada_flexivel, f.salario_base,
                 r.data, r.hora, r.tipo, r.justificativa
          FROM registro_ponto r
          JOIN funcionarios f ON r.funcionario_id = f.id
@@ -36,15 +36,15 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
 
     const trocasService = require('./trocasDia.service');
     const tratativasService = require('./tratativas.service');
-    const escalaSabadoService = require('./escalaSabado.service');
+    const escalaDiaService = require('./escalaDia.service');
 
-    const [feriados, percentuais, jornadasPorFuncionario, trocas, tratativas, sabadosEscalados] = await Promise.all([
+    const [feriados, percentuais, jornadasPorFuncionario, trocas, tratativas, diasEscalados] = await Promise.all([
         feriadosService.buscarComoConjunto({ dataInicio, dataFim }),
         buscarPercentuaisHorasExtras(),
         funcionariosService.buscarJornadaDeTodos(),
         trocasService.mapaDoPeriodo({ dataInicio, dataFim }),
         tratativasService.mapaDoPeriodo({ dataInicio, dataFim }),
-        escalaSabadoService.conjuntoDoPeriodo({ dataInicio, dataFim })
+        escalaDiaService.conjuntoDoPeriodo({ dataInicio, dataFim })
     ]);
 
     const agrupado = {};
@@ -61,6 +61,7 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
                     horas_diarias: row.horas_diarias,
                     tolerancia_almoco_min: row.tolerancia_almoco_min,
                     almoco_flexivel: row.almoco_flexivel,
+                    entrada_flexivel: row.entrada_flexivel,
                     salario_base: row.salario_base
                 },
                 dataISO: row.data,
@@ -82,9 +83,13 @@ async function relatorioCalculado({ dataInicio, dataFim, funcionarioId } = {}) {
             justificativas: dia.justificativas,
             ehFeriado: feriados.has(dia.dataISO),
             percentuaisHorasExtras: percentuais,
-            jornadaPorGrupo: jornadasPorFuncionario[dia.funcionarioId] || {},
+            // Vigência: cada dia usa o horário que estava valendo NAQUELE dia. Sem isso,
+            // trocar o turno de alguém reescreveria o atraso de todos os meses anteriores.
+            jornadaPorGrupo: funcionariosService.jornadaVigenteEm(
+                jornadasPorFuncionario[dia.funcionarioId], dia.dataISO
+            ),
             troca: trocas[chave] || null,
-            escaladoNoSabado: sabadosEscalados.has(chave),
+            escalado: diasEscalados.has(chave),
             tratativa: tratativas[chave] || null
         });
     });

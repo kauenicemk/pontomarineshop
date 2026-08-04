@@ -200,7 +200,7 @@
             </button>
             <button data-admin-aba="escala">
                 <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 15h3"/><path d="M8 18h6"/></svg>
-                Escala de Sábado
+                Escala de Fim de Semana
             </button>
             <button data-admin-aba="atestados">
                 <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
@@ -844,45 +844,46 @@
             </div>
         </section>
 
-        <!-- ---------- Escala de Sábado ---------- -->
+        <!-- ---------- Escala de Fim de Semana ---------- -->
         <section id="admin-escala" class="admin-tela">
-            <h1 class="admin-secao-titulo">Escala de Sábado</h1>
-            <p class="admin-secao-subtitulo">Sábados em que o colaborador foi escalado, fora da jornada normal.</p>
+            <h1 class="admin-secao-titulo">Escala de Fim de Semana</h1>
+            <p class="admin-secao-subtitulo">Sábados e domingos em que o colaborador foi escalado, fora da jornada normal.</p>
             <div class="aviso-info">
-                O estagiário <b>não tem sábado na jornada contratual</b>: só trabalha quando é escalado,
-                por necessidade da loja ou por vontade dele de acumular banco de horas. Sábado sem escala
-                não gera falta. Escalado e não veio, <b>gera falta no relatório mas não desconta na folha</b> —
-                o compromisso fica registrado sem virar prejuízo financeiro.
+                <b>Sábado</b> — vale a jornada de sábado da pessoa. Atraso e falta são registrados;
+                <b>descontam para CLT</b> (escalado, o sábado é obrigação daquele dia) e
+                <b>não descontam para estagiário</b>, que está ali por escala eventual ou para fazer
+                banco de horas — o que ele trabalhar simplesmente soma ao banco.
+                <br><br>
+                <b>Domingo</b> — não existe atraso (não há horário de entrada de domingo) e o dia
+                inteiro conta como hora extra de 100%. Faltar entra no relatório, mas nunca desconta.
+                <br><br>
+                Dia sem escala não gera falta nenhuma.
             </div>
 
             <div class="layout-painel">
             <div>
                 <div class="card">
                     <div class="bloco-cabecalho">
-                        <h2>Sábados escalados</h2>
+                        <h2>Dias escalados no mês</h2>
                         <span class="bloco-contador" id="escala-contador-total">0</span>
                     </div>
-                    <div class="tabela-wrap">
-                        <table>
-                            <thead><tr><th style="width:24px;"></th><th>Colaborador</th><th>Data</th><th>Observação</th><th></th></tr></thead>
-                            <tbody id="lista-escala-sabado"></tbody>
-                        </table>
-                    </div>
+                    <div id="lista-escala-dia"></div>
                 </div>
             </div>
 
             <aside class="painel-lateral">
                 <div class="card">
-                    <h2>Escalar num sábado</h2>
+                    <h2>Montar escala</h2>
                     <div class="filtros">
-                        <label>Sábado
+                        <label>Dia
                             <select id="escala-data"></select>
                         </label>
                         <label>Observação (opcional)
                             <input type="text" id="escala-observacao" maxlength="300" placeholder="Ex: inventário / banco de horas">
                         </label>
                     </div>
-                    <p class="rotulo" style="margin:14px 0 6px;">Quem trabalha nesse sábado</p>
+                    <p class="rotulo" style="margin:14px 0 4px;">Quem trabalha nesse dia</p>
+                    <p class="dica-campo" id="escala-aviso-elegiveis"></p>
                     <div class="lista-selecao" id="escala-funcionarios"></div>
                     <p class="erro-msg" id="escala-erro" role="alert"></p>
                     <button class="btn btn-principal" id="btn-salvar-escala" style="margin-top:10px;">Escalar selecionados</button>

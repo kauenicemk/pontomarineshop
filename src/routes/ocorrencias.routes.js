@@ -3,7 +3,7 @@ const app = new Hono();
 
 const trocasService = require('../services/trocasDia.service');
 const tratativasService = require('../services/tratativas.service');
-const escalaSabadoService = require('../services/escalaSabado.service');
+const escalaDiaService = require('../services/escalaDia.service');
 const { exigirAutorizacaoAdmin } = require('../middleware/adminAuth');
 const { exigirInteiro, exigirData, exigirTextoOpcional } = require('../utils/validacao');
 
@@ -88,21 +88,21 @@ app.delete('/atrasos/:id', exigirAutorizacaoAdmin, async (c) => {
     return c.json({ message: 'Tratativa removida — o atraso volta a contar normalmente.' });
 });
 
-/* ===================== Escala de sábado ===================== */
+/* ===================== Escala de dia extra (sábado e domingo) ===================== */
 
-app.get('/escala-sabado', exigirAutorizacaoAdmin, async (c) => {
-    return c.json(await escalaSabadoService.listar({
+app.get('/escala-dia', exigirAutorizacaoAdmin, async (c) => {
+    return c.json(await escalaDiaService.listar({
         dataInicio: exigirData(c.req.query('inicio'), 'inicio'),
         dataFim: exigirData(c.req.query('fim'), 'fim')
     }));
 });
 
 /** Sugestões de data para o seletor — evita o gestor descobrir na marra que terça não vale. */
-app.get('/escala-sabado/proximos', exigirAutorizacaoAdmin, async (c) => {
-    return c.json({ sabados: escalaSabadoService.proximosSabados(12) });
+app.get('/escala-dia/proximos', exigirAutorizacaoAdmin, async (c) => {
+    return c.json({ dias: escalaDiaService.proximosDias(12) });
 });
 
-app.post('/escala-sabado', exigirAutorizacaoAdmin, async (c) => {
+app.post('/escala-dia', exigirAutorizacaoAdmin, async (c) => {
     const body = await c.req.json();
     const observacao = exigirTextoOpcional(body.observacao, 'observacao', { maxLen: 300 });
     const data = exigirData(body.data, 'data');
@@ -116,16 +116,16 @@ app.post('/escala-sabado', exigirAutorizacaoAdmin, async (c) => {
             return c.json({ message: 'Selecione no máximo 200 colaboradores por vez.' }, 400);
         }
         const ids = body.funcionarios_ids.map((id) => exigirInteiro(id, 'funcionario_id'));
-        const r = await escalaSabadoService.criarEmLote({ funcionarios_ids: ids, data, observacao });
+        const r = await escalaDiaService.criarEmLote({ funcionarios_ids: ids, data, observacao });
         return c.json({
             ...r,
             message: r.jaExistiam > 0
-                ? `${r.criados} colaborador(es) escalado(s) — ${r.jaExistiam} já estava(m) neste sábado.`
-                : `${r.criados} colaborador(es) escalado(s) neste sábado.`
+                ? `${r.criados} colaborador(es) escalado(s) — ${r.jaExistiam} já estava(m) neste dia.`
+                : `${r.criados} colaborador(es) escalado(s) neste dia.`
         }, 201);
     }
 
-    const criado = await escalaSabadoService.criar({
+    const criado = await escalaDiaService.criar({
         funcionario_id: exigirInteiro(body.funcionario_id, 'funcionario_id'),
         data,
         observacao
@@ -133,9 +133,9 @@ app.post('/escala-sabado', exigirAutorizacaoAdmin, async (c) => {
     return c.json(criado, 201);
 });
 
-app.delete('/escala-sabado/:id', exigirAutorizacaoAdmin, async (c) => {
-    await escalaSabadoService.remover(exigirInteiro(c.req.param('id'), 'id'));
-    return c.json({ message: 'Escala removida — este sábado deixa de ser dia de trabalho.' });
+app.delete('/escala-dia/:id', exigirAutorizacaoAdmin, async (c) => {
+    await escalaDiaService.remover(exigirInteiro(c.req.param('id'), 'id'));
+    return c.json({ message: 'Escala removida — este dia deixa de ser dia de trabalho.' });
 });
 
 module.exports = app;

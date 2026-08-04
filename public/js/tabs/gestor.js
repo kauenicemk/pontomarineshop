@@ -100,7 +100,7 @@ function renderizarResumoAtestados(dados) {
 function marcaDoDia(dia) {
     const partes = [];
     if (dia.troca) partes.push(dia.troca.papel === 'folga' ? 'folga trocada' : 'compensação');
-    if (dia.escaladoNoSabado) partes.push('sábado escalado');
+    if (dia.escalado) partes.push(new Date(`${dia.dataISO}T12:00:00Z`).getUTCDay() === 0 ? 'domingo escalado' : 'sábado escalado');
     if (dia.tratativa) {
         const rotulos = { atraso_abonado: 'abonado', atraso_registrado: 'justificado', atestado_horas: 'atestado' };
         partes.push(rotulos[dia.tratativa.tipo] || dia.tratativa.tipo);
@@ -177,7 +177,7 @@ export function exportarPlanilhaParaExcel() {
         const min = (m) => `${String(Math.floor((m || 0) / 60)).padStart(2, '0')}:${String((m || 0) % 60).padStart(2, '0')}`;
         const ocorrencia = [
             dia.troca ? (dia.troca.papel === 'folga' ? 'folga trocada' : 'compensacao') : '',
-            dia.escaladoNoSabado ? 'sabado escalado' : '',
+            dia.escalado ? (new Date(`${dia.dataISO}T12:00:00Z`).getUTCDay() === 0 ? 'domingo escalado' : 'sabado escalado') : '',
             dia.tratativa ? dia.tratativa.tipo : ''
         ].filter(Boolean).join(' + ');
         csv += `${dia.nome};${dia.data};${dia.horario_combinado};${p.ENTRADA || '---'};${p.ALMOCO_SAIDA || '---'};${p.ALMOCO_RETORNO || '---'};${p.SAIDA || '---'};${dia.tempo_trabalhado};${dia.atraso};${min(dia.atrasoDescontavelMinutos)};${dia.saldo};${extra60};${extra100};${min(dia.horas_extras.minutosPagos)};${dia.horas_noturnas.tempo};${ocorrencia}\n`;

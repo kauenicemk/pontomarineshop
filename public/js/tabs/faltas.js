@@ -99,7 +99,10 @@ function renderizarFaltas(totalDiasUteis, turnoFiltro) {
                     ${turno ? `<span class="badge-turno">${escapeHtml(ROTULOS_TURNO[turno])}</span>` : ''}
                 </td>
                 <td>${formatarDataBR(f.data)}</td>
-                <td style="color:var(--vermelho)">Falta não justificada</td>
+                <td style="white-space:normal">${f.descontavel === false
+                    ? `<span style="color:var(--amarelo)">Falta registrada, sem desconto</span>
+                       <br><span style="color:var(--texto-mudo); font-size:11.5px;">${escapeHtml(f.tipoEscala === 'domingo' ? 'domingo escalado' : 'sábado escalado — sem obrigação contratual')}</span>`
+                    : '<span style="color:var(--vermelho)">Falta não justificada</span>'}</td>
                 <td><button class="action-btn btn-justificar" data-indice="${i}">Justificar</button></td>
             </tr>`;
     }).join('');

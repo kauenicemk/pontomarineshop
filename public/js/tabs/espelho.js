@@ -24,6 +24,7 @@ function primeiroEUltimoDiaDoMes(mesISO) {
 function ocorrenciaDoDia(d) {
     const partes = [];
     if (d.troca) partes.push(d.troca.papel === 'folga' ? 'folga trocada' : 'compensação');
+    if (d.escalado) partes.push('escala de fim de semana');
     if (d.tratativa) {
         const rotulos = { atraso_abonado: 'atraso abonado', atraso_registrado: 'atraso justificado', atestado_horas: 'atestado de horas' };
         partes.push(rotulos[d.tratativa.tipo] || d.tratativa.tipo);

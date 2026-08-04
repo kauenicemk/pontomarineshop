@@ -14,6 +14,12 @@ const GRUPOS = [
     { chave: 'sabado', rotulo: 'Sábado' }
 ];
 
+/** Data de hoje em ISO, sem depender de fuso do navegador virar o dia. */
+function hojeISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function linhaGrupo(grupo, cfg) {
     const c = cfg || { horario_entrada: '08:00', meta_minutos: 0, trabalha: false };
     return `
@@ -80,6 +86,10 @@ export async function renderizarAbaConfig() {
                     <input type="checkbox" class="input-flexivel" ${f.almoco_flexivel ? 'checked' : ''}>
                     Almoço livre (sem gerar atraso)
                 </label>
+                <label class="label-checkbox">
+                    <input type="checkbox" class="input-entrada-flexivel" ${f.entrada_flexivel ? 'checked' : ''}>
+                    Sem horário de entrada fixo
+                </label>
             </div>
 
             <div class="config-row-campos">
@@ -97,15 +107,39 @@ export async function renderizarAbaConfig() {
                 </label>
             </div>
 
-            <div class="jornada-grupos">
+            <div class="jornada-grupos ${f.entrada_flexivel ? 'sem-horario-fixo' : ''}">
                 <p class="nota-rodape" style="margin:0 0 8px;">
                     O turno é definido sozinho pelo horário de entrada: antes das
                     ${HORA_CORTE_TURNO}:00 é <b>${ROTULOS_TURNO.manha_tarde}</b>, a partir das
                     ${HORA_CORTE_TURNO}:00 é <b>${ROTULOS_TURNO.tarde_noite}</b>.
                 </p>
+                <p class="aviso-sem-horario">
+                    Este colaborador está <b>sem horário de entrada fixo</b>: ele nunca gera atraso.
+                    A carga horária de cada dia continua valendo para saldo, banco de horas e falta.
+                </p>
                 <button type="button" class="btn-copiar-jornada">Copiar Segunda-feira para Terça–Sexta</button>
                 ${GRUPOS.map((g) => linhaGrupo(g, f.jornada[g.chave])).join('')}
             </div>
+
+            <!--
+                VIGÊNCIA. Salvar cria uma versão a partir desta data; os dias anteriores
+                continuam com o horário que valia na época. Sem isso, trocar o turno de
+                alguém reescrevia o atraso de todos os meses passados — inclusive de
+                espelhos de ponto já conferidos e assinados.
+            -->
+            <div class="config-row-campos bloco-vigencia">
+                <label>O novo horário vale a partir de
+                    <input type="date" class="input-vigencia" value="${hojeISO()}">
+                </label>
+                <label class="label-checkbox">
+                    <input type="checkbox" class="input-corrigir-passado">
+                    Corrigir também os dias anteriores
+                </label>
+            </div>
+            <p class="dica-campo dica-vigencia">
+                Marque "corrigir os dias anteriores" só quando o horário estava <b>digitado errado</b>.
+                Em troca de turno, deixe desmarcado para o histórico não mudar.
+            </p>
 
             <button class="action-btn btn-salvar-linha" style="width:auto; padding:6px 14px; margin-top:10px;">Salvar tudo</button>
             </div>
@@ -117,6 +151,15 @@ export async function renderizarAbaConfig() {
     // Gavetas: cada funcionário abre/fecha ao tocar no cabeçalho (fechadas por padrão).
     iniciarFiltros();
     aplicarFiltros();
+
+    // A chave de horário livre reflete na hora: esconder os campos de entrada só depois
+    // de salvar deixaria o gestor preenchendo um horário que não vai ser usado.
+    container.querySelectorAll('.input-entrada-flexivel').forEach((chk) => {
+        chk.addEventListener('change', () => {
+            const grupos = chk.closest('.config-gaveta-corpo').querySelector('.jornada-grupos');
+            grupos.classList.toggle('sem-horario-fixo', chk.checked);
+        });
+    });
 
     container.querySelectorAll('.config-gaveta-header').forEach((header) => {
         header.addEventListener('click', () => {
@@ -295,7 +338,10 @@ async function salvarLinha(linha) {
     const regime = linha.querySelector('.input-regime').value;
     const tolerancia_almoco_min = parseInt(linha.querySelector('.input-tolerancia').value, 10) || 0;
     const almoco_flexivel = linha.querySelector('.input-flexivel').checked;
+    const entrada_flexivel = linha.querySelector('.input-entrada-flexivel').checked;
     const jornada = lerJornadaDaLinha(linha);
+    const corrigir_passado = linha.querySelector('.input-corrigir-passado').checked;
+    const vigencia_inicio = linha.querySelector('.input-vigencia').value || null;
 
     const data_admissao = linha.querySelector('.input-admissao').value || null;
     const salario_base = linha.querySelector('.input-salario').value || null;
@@ -305,7 +351,8 @@ async function salvarLinha(linha) {
     try {
         await api.atualizarRegime(id, regime);
         await api.atualizarRegrasAlmoco(id, { tolerancia_almoco_min, almoco_flexivel });
-        await api.salvarJornada(id, jornada);
+        await api.atualizarEntradaFlexivel(id, entrada_flexivel);
+        await api.salvarJornada(id, { ...jornada, vigencia_inicio, corrigir_passado });
         await api.atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo, departamento });
         toast('Configuração salva com sucesso!', 'sucesso');
         renderizarAbaConfig();

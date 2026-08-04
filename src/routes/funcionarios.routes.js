@@ -7,7 +7,7 @@ const { exigirAutorizacaoAdmin } = require('../middleware/adminAuth');
 const { exigirTotem } = require('../middleware/totemAuth');
 const {
     exigirInteiro, exigirTexto, exigirTextoOpcional, exigirRegime, exigirPin, exigirHora,
-    exigirDescritorFacial, exigirDataOpcional, exigirValorMonetarioOpcional
+    exigirDescritorFacial, exigirData, exigirDataOpcional, exigirValorMonetarioOpcional
 } = require('../utils/validacao');
 
 // Lista usada pelo totem pra montar o mural — exige token do totem (não é mais pública).
@@ -79,6 +79,12 @@ app.get('/:id/jornada', exigirAutorizacaoAdmin, async (c) => {
     return c.json(await funcionariosService.buscarJornada(id));
 });
 
+/** Todas as vigências já cadastradas — o histórico de horários da pessoa. */
+app.get('/:id/jornada/vigencias', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    return c.json(await funcionariosService.buscarVersoesDaJornada(id));
+});
+
 app.post('/:id/jornada', exigirAutorizacaoAdmin, async (c) => {
     const id = exigirInteiro(c.req.param('id'), 'id');
     const body = await c.req.json();
@@ -92,8 +98,44 @@ app.post('/:id/jornada', exigirAutorizacaoAdmin, async (c) => {
             trabalha: !!cfg.trabalha
         };
     }
-    await funcionariosService.atualizarJornadaCompleta(id, jornada);
-    return c.json({ message: 'Jornada atualizada com sucesso!' });
+
+    /**
+     * VIGÊNCIA (migração 0009). `corrigir_passado` sobrescreve a configuração original
+     * e vale desde sempre — é para erro de digitação. Sem ele, a alteração cria uma
+     * versão nova a partir da data informada e os dias anteriores continuam com o
+     * horário da época, para que espelhos já conferidos não mudem sozinhos.
+     */
+    const vigencia = body.corrigir_passado
+        ? '0001-01-01'
+        : (body.vigencia_inicio ? exigirData(body.vigencia_inicio, 'vigencia_inicio') : null);
+
+    await funcionariosService.atualizarJornadaCompleta(id, jornada, vigencia);
+    return c.json({
+        message: body.corrigir_passado
+            ? 'Jornada atualizada e aplicada também aos dias anteriores.'
+            : `Jornada atualizada — vale a partir de ${(vigencia || '').split('-').reverse().join('/') || 'hoje'}.`
+    });
+});
+
+app.delete('/:id/jornada/vigencias/:vigencia', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    await funcionariosService.removerVersaoDaJornada(id, exigirData(c.req.param('vigencia'), 'vigencia'));
+    return c.json({ message: 'Vigência removida.' });
+});
+
+/**
+ * Horário de entrada fixo ou livre. Sem horário fixo a pessoa nunca gera atraso,
+ * mas a carga horária diária continua valendo para saldo e banco de horas.
+ */
+app.post('/:id/entrada-flexivel', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const body = await c.req.json();
+    await funcionariosService.atualizarEntradaFlexivel(id, !!body.entrada_flexivel);
+    return c.json({
+        message: body.entrada_flexivel
+            ? 'Horário de entrada livre — este colaborador não gera mais atraso.'
+            : 'Horário de entrada fixo — o atraso volta a ser calculado.'
+    });
 });
 
 // Regras de almoço (tolerância em minutos + flexibilidade) — substitui as exceções por nome hardcoded.

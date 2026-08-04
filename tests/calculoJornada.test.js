@@ -546,7 +546,7 @@ function diaDeSabado(escalado) {
         ehFeriado: false,
         percentuaisHorasExtras: PERCENTUAIS,
         jornadaPorGrupo: JORNADA_SEM_SABADO,
-        escaladoNoSabado: escalado
+        escalado
     });
 }
 
@@ -555,7 +555,7 @@ test('sábado SEM escala não tem meta nem horário combinado', () => {
     assert.strictEqual(dia.horario_combinado, '---', 'nao e dia de trabalho dessa pessoa');
     assert.strictEqual(dia.saldoMinutos, null, 'sem meta nao ha saldo: as 4h viram credito puro');
     assert.strictEqual(dia.horas_extras.minutos, 240);
-    assert.strictEqual(dia.escaladoNoSabado, false);
+    assert.strictEqual(dia.escalado, false);
 });
 
 test('sábado COM escala passa a valer a jornada de sábado', () => {
@@ -563,10 +563,10 @@ test('sábado COM escala passa a valer a jornada de sábado', () => {
     assert.strictEqual(dia.horario_combinado, '08:00', 'a config do sabado passa a valer naquela data');
     assert.strictEqual(dia.saldoMinutos, 0, '4h trabalhadas contra meta de 4h');
     assert.strictEqual(dia.horas_extras.minutos, 0, 'dentro da meta nao ha extra');
-    assert.strictEqual(dia.escaladoNoSabado, true);
+    assert.strictEqual(dia.escalado, true);
 });
 
-test('sábado escalado gera atraso normalmente', () => {
+test('sábado escalado: estagiário registra atraso mas não desconta', () => {
     const dia = calc.montarRelatorioDia({
         funcionario: { id: 1, nome: 'E', emoji: 'E', regime: 'ESTAGIARIO', horas_diarias: '6h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
         dataISO: SABADO,
@@ -575,26 +575,178 @@ test('sábado escalado gera atraso normalmente', () => {
         ehFeriado: false,
         percentuaisHorasExtras: PERCENTUAIS,
         jornadaPorGrupo: JORNADA_SEM_SABADO,
-        escaladoNoSabado: true
+        escalado: true
     });
-    assert.strictEqual(dia.atrasoMinutos, 20, 'escalado, chegar tarde conta igual a qualquer dia');
-    assert.strictEqual(dia.atrasoDescontavelMinutos, 20);
+    assert.strictEqual(dia.atrasoMinutos, 20, 'o atraso aparece no relatorio');
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 0, 'estagiario nao tem obrigacao de sabado: nao desconta');
+    assert.strictEqual(dia.saldoMinutos, 0, 'e o que ele trabalhou soma ao banco sem punicao');
 });
 
-test('escala de sábado só aceita sábado de verdade', async () => {
-    const escala = require('../src/services/escalaSabado.service');
+test('sábado escalado: CLT registra atraso E desconta', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 2, nome: 'C', emoji: 'C', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: SABADO,
+        pontos: { ENTRADA: '08:20', SAIDA: '12:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_SEM_SABADO,
+        escalado: true
+    });
+    assert.strictEqual(dia.atrasoMinutos, 20);
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 20, 'escalado, o sabado e obrigacao do CLT');
+    assert.strictEqual(dia.saldoMinutos, -20);
+});
+
+test('escala só aceita sábado ou domingo', async () => {
+    const escala = require('../src/services/escalaDia.service');
     // QUARTA = 2026-07-22. Sem tocar no banco: a validação do dia da semana vem antes.
     await assert.rejects(
         () => escala.criar({ funcionario_id: 1, data: QUARTA }),
-        /só vale para sábados/
+        /sábados e domingos/
     );
 });
 
-test('os próximos sábados sugeridos caem todos num sábado', () => {
-    const escala = require('../src/services/escalaSabado.service');
-    const sabados = escala.proximosSabados(8);
-    assert.strictEqual(sabados.length, 8);
-    sabados.forEach((d) => {
-        assert.strictEqual(new Date(`${d}T12:00:00Z`).getUTCDay(), 6, `${d} deveria ser sabado`);
+test('os dias sugeridos são todos sábado ou domingo', () => {
+    const escala = require('../src/services/escalaDia.service');
+    const dias = escala.proximosDias(4);
+    assert.ok(dias.length >= 8, 'quatro semanas devem render pelo menos 8 datas');
+    dias.forEach(({ data, tipo }) => {
+        const d = new Date(`${data}T12:00:00Z`).getUTCDay();
+        assert.ok(d === 0 || d === 6, `${data} deveria ser fim de semana`);
+        assert.strictEqual(tipo, d === 6 ? 'sabado' : 'domingo');
     });
+});
+
+/* ===================== Escala de domingo ===================== */
+
+test('domingo escalado não tem meta nem atraso, e é 100% de extra', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'D', emoji: 'D', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: 2200 },
+        dataISO: DOMINGO,
+        pontos: { ENTRADA: '10:00', SAIDA: '14:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO,
+        escalado: true
+    });
+    assert.strictEqual(dia.atrasoMinutos, 0, 'nao existe horario de entrada de domingo');
+    assert.strictEqual(dia.horario_combinado, '---');
+    assert.strictEqual(dia.horas_extras.tipo, 'domingo_feriado');
+    assert.strictEqual(dia.horas_extras.minutos, 240, 'o dia inteiro e extra');
+});
+
+test('domingo escalado nunca desconta atraso, nem com almoço estourado', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'D', emoji: 'D', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: DOMINGO,
+        // almoço de 90 min: 30 acima do combinado, 29 acima da folga de 1
+        pontos: { ENTRADA: '08:00', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:30', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO,
+        escalado: true
+    });
+    assert.strictEqual(dia.atrasoMinutos, 29, 'o excesso de almoco continua sendo registrado');
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 0, 'mas domingo escalado nunca desconta');
+});
+
+test('a regra de desconto do atraso responde por dia e regime', () => {
+    const casos = [
+        { data: QUARTA,  regime: 'CLT',         escalado: false, esperado: true,  nota: 'dia normal' },
+        { data: QUARTA,  regime: 'ESTAGIARIO',  escalado: false, esperado: true,  nota: 'dia normal' },
+        { data: SABADO,  regime: 'CLT',         escalado: true,  esperado: true,  nota: 'CLT escalado no sabado' },
+        { data: SABADO,  regime: 'ESTAGIARIO',  escalado: true,  esperado: false, nota: 'estagiario escalado no sabado' },
+        { data: SABADO,  regime: 'PJ',          escalado: true,  esperado: false, nota: 'PJ escalado no sabado' },
+        { data: DOMINGO, regime: 'CLT',         escalado: true,  esperado: false, nota: 'domingo escalado' }
+    ];
+    casos.forEach(({ data, regime, escalado, esperado, nota }) => {
+        assert.strictEqual(calc.atrasoPodeDescontar(data, regime, escalado), esperado, nota);
+    });
+});
+
+/* ===================== Horário de entrada livre ===================== */
+
+test('quem não tem horário de entrada nunca gera atraso', () => {
+    const base = {
+        dataISO: QUARTA,
+        pontos: { ENTRADA: '09:30', ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:00', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO
+    };
+    const comHorario = calc.montarRelatorioDia({
+        ...base,
+        funcionario: { id: 1, nome: 'A', emoji: 'A', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null, entrada_flexivel: 0 }
+    });
+    const semHorario = calc.montarRelatorioDia({
+        ...base,
+        funcionario: { id: 2, nome: 'B', emoji: 'B', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null, entrada_flexivel: 1 }
+    });
+
+    assert.strictEqual(comHorario.atrasoMinutos, 90, 'entrou 1h30 depois das 08:00');
+    assert.strictEqual(semHorario.atrasoMinutos, 0, 'sem horario combinado nao ha do que se atrasar');
+    assert.strictEqual(semHorario.entradaFlexivel, true);
+});
+
+test('horário livre não elimina a meta: o saldo continua valendo', () => {
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 2, nome: 'B', emoji: 'B', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null, entrada_flexivel: 1 },
+        dataISO: QUARTA,
+        // 6h trabalhadas contra meta de 8h
+        pontos: { ENTRADA: '10:00', ALMOCO_SAIDA: '13:00', ALMOCO_RETORNO: '14:00', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO
+    });
+    assert.strictEqual(dia.atrasoMinutos, 0);
+    assert.strictEqual(dia.saldoMinutos, -120, 'faltaram 2h para fechar a jornada do dia');
+});
+
+/* ===================== Vigência da jornada ===================== */
+
+test('a jornada de um dia usa a versão vigente NAQUELE dia', () => {
+    const { jornadaVigenteEm } = require('../src/services/funcionarios.service');
+    const versoes = {
+        quarta: [
+            { vigencia_inicio: '2026-08-01', horario_entrada: '08:00', meta_minutos: 480, trabalha: true },
+            { vigencia_inicio: '0001-01-01', horario_entrada: '13:00', meta_minutos: 480, trabalha: true }
+        ]
+    };
+    assert.strictEqual(jornadaVigenteEm(versoes, '2026-07-22').quarta.horario_entrada, '13:00', 'antes da troca');
+    assert.strictEqual(jornadaVigenteEm(versoes, '2026-08-05').quarta.horario_entrada, '08:00', 'depois da troca');
+});
+
+test('trocar de turno não reescreve o atraso dos dias anteriores', () => {
+    const { jornadaVigenteEm } = require('../src/services/funcionarios.service');
+    // Cenário real: pessoa do turno da tarde (13:00) entrou 13:20 num dia — atraso de 20 min.
+    // Depois o turno dela mudou para 08:00. Sem vigência, aquele dia virava 5h20 de atraso.
+    const versoes = {
+        quarta: [
+            { vigencia_inicio: '2026-08-01', horario_entrada: '08:00', meta_minutos: 480, trabalha: true },
+            { vigencia_inicio: '0001-01-01', horario_entrada: '13:00', meta_minutos: 480, trabalha: true }
+        ]
+    };
+    const f = { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null };
+    const pontos = { ENTRADA: '13:20', ALMOCO_SAIDA: '17:00', ALMOCO_RETORNO: '18:00', SAIDA: '22:00' };
+
+    const diaAntigo = calc.montarRelatorioDia({
+        funcionario: f, dataISO: QUARTA, pontos, justificativas: {}, ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: jornadaVigenteEm(versoes, QUARTA)
+    });
+    assert.strictEqual(diaAntigo.atrasoMinutos, 20, 'o dia antigo mantem o atraso que sempre teve');
+});
+
+test('data anterior à primeira vigência cai na versão mais antiga', () => {
+    const { jornadaVigenteEm } = require('../src/services/funcionarios.service');
+    const versoes = {
+        quarta: [{ vigencia_inicio: '2026-08-01', horario_entrada: '08:00', meta_minutos: 480, trabalha: true }]
+    };
+    // Não pode devolver vazio: isso transformaria em falta todo dia anterior ao cadastro.
+    assert.strictEqual(jornadaVigenteEm(versoes, '2026-01-10').quarta.horario_entrada, '08:00');
 });

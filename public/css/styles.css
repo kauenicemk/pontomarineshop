@@ -256,6 +256,34 @@ a { color: var(--accent); }
     font-size: 12px; letter-spacing: .2px; padding-top: 12px;
 }
 
+.dica-campo { font-size: 11.5px; color: var(--texto-mudo); margin: 0 0 8px; line-height: 1.45; }
+
+/* Gavetas da escala — um mês inteiro de fins de semana em uma tela só. */
+.gaveta-escala {
+    border: 1px solid var(--border); border-radius: var(--raio-sm);
+    margin-bottom: 10px; overflow: hidden; background: var(--card-2);
+}
+.gaveta-escala-topo {
+    width: 100%; display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; background: none; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 13px; color: var(--texto); text-align: left;
+    transition: background .15s ease;
+}
+.gaveta-escala-topo:hover { background: var(--card); }
+.gaveta-escala-titulo { display: flex; align-items: center; gap: 8px; font-weight: 700; flex: 1; }
+.gaveta-escala-contagem { font-size: 11.5px; color: var(--texto-mudo); }
+.gaveta-escala-seta { width: 16px; height: 16px; flex-shrink: 0; transition: transform .2s ease; color: var(--texto-mudo); }
+.gaveta-escala.aberta .gaveta-escala-seta { transform: rotate(180deg); }
+
+/* Fechada por padrão; a classe .aberta é quem revela — assim a lista de meses
+   inteiros cabe na tela e o gestor abre só o dia que quer conferir. */
+.gaveta-escala-corpo { display: none; padding: 0 14px 12px; }
+.gaveta-escala.aberta .gaveta-escala-corpo { display: block; }
+.nota-gaveta { font-size: 11px; color: var(--texto-mudo); line-height: 1.5; margin: 10px 0 0; }
+
+.badge-sabado { background: var(--accent-suave); color: var(--accent-texto); }
+.badge-domingo { background: rgba(139, 122, 255, .16); color: var(--roxo); }
+
 /* O trilho e o botão do switch. A bolinha desliza com um easing levemente
    elástico — é a única animação "divertida" do sistema, e serve de confirmação
    imediata de que o clique foi registrado. */
@@ -943,3 +971,22 @@ tr.selecionada { background: var(--accent-suave); }
     .banner-selecionado { flex-direction: column; align-items: stretch; text-align: center; }
     .banner-selecionado-info { justify-content: center; }
 }
+
+/* ===================== Horário de entrada livre ===================== */
+/* Sem horário fixo, o campo de entrada não influencia nada: escondê-lo evita o
+   gestor preencher algo que o cálculo vai ignorar. A carga horária continua à
+   mostra, porque essa sim continua valendo. */
+.jornada-grupos .aviso-sem-horario { display: none; }
+.jornada-grupos.sem-horario-fixo .aviso-sem-horario {
+    display: block; font-size: 11.5px; line-height: 1.5; margin: 0 0 10px;
+    padding: 8px 10px; border-radius: var(--raio-sm);
+    background: var(--accent-suave); color: var(--accent-texto);
+}
+.jornada-grupos.sem-horario-fixo .jornada-entrada { opacity: .4; pointer-events: none; }
+.jornada-grupos.sem-horario-fixo .jornada-grupo label:has(.jornada-entrada) { opacity: .5; }
+
+/* Vigência da jornada */
+.bloco-vigencia {
+    margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+}
+.dica-vigencia { margin-top: 2px; }

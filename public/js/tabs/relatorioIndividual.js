@@ -44,6 +44,9 @@ function seloDoDia(d) {
             ? `<span class="selo-ocorrencia selo-troca" title="Folga compensada trabalhando em ${par}">folga trocada</span>`
             : `<span class="selo-ocorrencia selo-troca" title="Compensando a folga de ${par}">compensação</span>`);
     }
+    if (d.escalado) {
+        selos.push('<span class="selo-ocorrencia selo-troca" title="Dia trabalhado por escala, fora da jornada normal">escalado</span>');
+    }
     if (d.tratativa) {
         const t = d.tratativa;
         const titulo = escapeHtml(t.motivo || '');

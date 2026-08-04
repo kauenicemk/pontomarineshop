@@ -87,10 +87,10 @@ async function calcularFaltas({ dataInicio, dataFim }) {
     }
 
     const trocasService = require('./trocasDia.service');
-    const escalaSabadoService = require('./escalaSabado.service');
-    const [folgasCompensadas, sabadosEscalados] = await Promise.all([
+    const escalaDiaService = require('./escalaDia.service');
+    const [folgasCompensadas, diasEscalados] = await Promise.all([
         trocasService.folgasPorFuncionario({ dataInicio, dataFim }),
-        escalaSabadoService.conjuntoDoPeriodo({ dataInicio, dataFim })
+        escalaDiaService.conjuntoDoPeriodo({ dataInicio, dataFim })
     ]);
 
     const [funcionarios, feriadosSet, justificadas, entradasRegistradas, jornadasPorFuncionario] = await Promise.all([
@@ -117,28 +117,35 @@ async function calcularFaltas({ dataInicio, dataFim }) {
     let totalDiasDeTrabalhoNoPeriodo = 0;
 
     funcionarios.forEach((f) => {
-        const jornada = jornadasPorFuncionario[f.id] || {};
+        const versoes = jornadasPorFuncionario[f.id] || {};
 
         todosOsDias.forEach((data) => {
+            // Mesma regra do relatório: vale o que estava configurado NAQUELE dia.
+            const jornada = funcionariosService.jornadaVigenteEm(versoes, data);
             if (feriadosSet.has(data)) return; // feriado nunca é falta
 
             const grupo = grupoDoDia(data);
-            if (!grupo) return; // domingo nunca conta
+            const chaveDia = `${f.id}_${data}`;
+            const escaladoNesseDia = diasEscalados.has(chaveDia);
 
-            const chave = `${f.id}_${data}`;
-            const cfgGrupo = jornada[grupo];
+            // Domingo só entra na conta quando a pessoa foi escalada nele.
+            if (!grupo && !escaladoNesseDia) return;
+
+            const chave = chaveDia;
+            const cfgGrupo = grupo ? jornada[grupo] : null;
 
             /**
-             * ESCALA DE SÁBADO (migração 0008). O estagiário tem sábado como "não trabalha",
-             * então normalmente esse dia é ignorado aqui. Escalado, o sábado vira dia de
-             * trabalho só para ele e só naquela data — e não aparecer gera falta.
+             * ESCALA DE DIA EXTRA (migração 0009). Sábado e domingo normalmente ficam
+             * de fora daqui — o dia está como "não trabalha" ou nem existe na jornada.
+             * Escalado, aquele dia vira dia de trabalho só para essa pessoa e só naquela
+             * data, e não aparecer gera falta: compromisso assumido e descumprido.
              *
-             * Essa falta é marcada como NÃO DESCONTÁVEL: entra no relatório de disciplina
-             * (foi um compromisso assumido e descumprido), mas não pode virar desconto na
-             * folha, porque o sábado nunca fez parte da jornada contratual.
+             * Se essa falta DESCONTA depende do dia e do regime:
+             *   domingo escalado          -> nunca desconta
+             *   sábado escalado, CLT      -> desconta (o sábado é obrigação daquele dia)
+             *   sábado escalado, demais   -> não desconta (escala eventual / banco de horas)
              */
-            const escaladoNesseSabado = grupo === 'sabado' && sabadosEscalados.has(chave);
-            const ehDiaDeTrabalho = escaladoNesseSabado || (cfgGrupo && cfgGrupo.trabalha);
+            const ehDiaDeTrabalho = escaladoNesseDia || (cfgGrupo && cfgGrupo.trabalha);
             if (!ehDiaDeTrabalho) return;
 
             totalDiasDeTrabalhoNoPeriodo += 1;
@@ -148,12 +155,16 @@ async function calcularFaltas({ dataInicio, dataFim }) {
             // Folga trocada por outro dia: não é falta, o dia foi compensado.
             if (folgasCompensadas.has(chave)) return;
 
+            const descontavel = !escaladoNesseDia
+                ? true
+                : (grupo === 'sabado' && f.regime === 'CLT');
+
             faltas.push({
                 funcionario_id: f.id, emoji: f.emoji, nome: f.nome, regime: f.regime, data,
                 tipo: 'falta_injustificada',
-                // Sábado escalado: conta como falta, mas não desconta na folha.
-                escalaSabado: escaladoNesseSabado,
-                descontavel: !escaladoNesseSabado
+                escalado: escaladoNesseDia,
+                tipoEscala: escaladoNesseDia ? (grupo === 'sabado' ? 'sabado' : 'domingo') : null,
+                descontavel
             });
         });
     });

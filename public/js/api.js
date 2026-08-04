@@ -67,6 +67,9 @@ export const api = {
     atualizarRegime: (id, regime) => chamar(`/api/funcionarios/${id}/regime`, { method: 'POST', body: { regime }, admin: true }),
     removerFuncionario: (id) => chamar(`/api/funcionarios/${id}`, { method: 'DELETE', admin: true }),
     salvarJornada: (id, jornada) => chamar(`/api/funcionarios/${id}/jornada`, { method: 'POST', body: jornada, admin: true }),
+    listarVigenciasJornada: (id) => chamar(`/api/funcionarios/${id}/jornada/vigencias`, { admin: true }),
+    removerVigenciaJornada: (id, vigencia) => chamar(`/api/funcionarios/${id}/jornada/vigencias/${vigencia}`, { method: 'DELETE', admin: true }),
+    atualizarEntradaFlexivel: (id, entrada_flexivel) => chamar(`/api/funcionarios/${id}/entrada-flexivel`, { method: 'POST', body: { entrada_flexivel }, admin: true }),
     cadastrarBiometria: (id, descritor) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'POST', body: { descritor }, admin: true }),
     removerBiometria: (id) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'DELETE', admin: true }),
     resumoBiometria: () => chamar('/api/funcionarios/biometria/resumo', { admin: true }),
@@ -138,11 +141,11 @@ export const api = {
     // Atestados (dia inteiro + horas na mesma visão)
     listarAtestados: (inicio, fim) => chamar(`/api/atestados?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
 
-    // Escala de sábado (estagiário escalado num sábado específico)
-    listarEscalaSabado: (inicio, fim) => chamar(`/api/ocorrencias/escala-sabado?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
-    proximosSabados: () => chamar('/api/ocorrencias/escala-sabado/proximos', { admin: true }),
-    escalarSabado: (dados) => chamar('/api/ocorrencias/escala-sabado', { method: 'POST', body: dados, admin: true }),
-    removerEscalaSabado: (id) => chamar(`/api/ocorrencias/escala-sabado/${id}`, { method: 'DELETE', admin: true }),
+    // Escala de dia extra (sábado e domingo)
+    listarEscalaDia: (inicio, fim) => chamar(`/api/ocorrencias/escala-dia?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
+    proximosDiasEscalaveis: () => chamar('/api/ocorrencias/escala-dia/proximos', { admin: true }),
+    escalarDia: (dados) => chamar('/api/ocorrencias/escala-dia', { method: 'POST', body: dados, admin: true }),
+    removerEscalaDia: (id) => chamar(`/api/ocorrencias/escala-dia/${id}`, { method: 'DELETE', admin: true }),
 
     // People Analytics
     indicadoresGerais: (inicio, fim) => chamar(`/api/analytics/indicadores?${new URLSearchParams({ inicio, fim })}`, { admin: true })

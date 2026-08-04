@@ -864,7 +864,7 @@
             <div>
                 <div class="card">
                     <div class="bloco-cabecalho">
-                        <h2>Dias escalados no mês</h2>
+                        <h2>Escalados em <span id="escala-mes-titulo"></span></h2>
                         <span class="bloco-contador" id="escala-contador-total">0</span>
                     </div>
                     <div id="lista-escala-dia"></div>
@@ -874,27 +874,24 @@
             <aside class="painel-lateral">
                 <div class="card">
                     <h2>Montar escala</h2>
-                    <div class="filtros">
-                        <label>Dia
-                            <select id="escala-data"></select>
-                        </label>
-                        <label>Observação (opcional)
-                            <input type="text" id="escala-observacao" maxlength="300" placeholder="Ex: inventário / banco de horas">
-                        </label>
-                    </div>
-                    <p class="rotulo" style="margin:14px 0 4px;">Quem trabalha nesse dia</p>
+                    <!-- O calendário escolhe o dia E comanda o mês da listagem ao lado.
+                         Dias de semana ficam apagados: a regra aparece na tela em vez de
+                         virar mensagem de erro depois de clicar em salvar. -->
+                    <div class="calendario" id="escala-calendario"></div>
+
+                    <p class="escala-dia-escolhido" id="escala-dia-escolhido"></p>
+
+                    <label class="rotulo" style="margin-bottom:10px;">Observação (opcional)
+                        <input type="text" class="campo" id="escala-observacao" maxlength="300"
+                               placeholder="Ex: inventário / banco de horas"
+                               style="text-align:left; letter-spacing:normal; font-size:14px;">
+                    </label>
+
+                    <p class="rotulo" style="margin:6px 0 4px;">Quem trabalha nesse dia</p>
                     <p class="dica-campo" id="escala-aviso-elegiveis"></p>
                     <div class="lista-selecao" id="escala-funcionarios"></div>
                     <p class="erro-msg" id="escala-erro" role="alert"></p>
                     <button class="btn btn-principal" id="btn-salvar-escala" style="margin-top:10px;">Escalar selecionados</button>
-                </div>
-
-                <div class="card">
-                    <h2>Ver período</h2>
-                    <div class="filtros">
-                        <label>Mês <input type="month" id="escala-mes"></label>
-                    </div>
-                    <button class="btn btn-secundario" id="btn-filtrar-escala" style="margin-top:12px;">Atualizar lista</button>
                 </div>
             </aside>
             </div>

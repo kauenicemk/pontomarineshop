@@ -143,7 +143,6 @@ export const api = {
 
     // Escala de dia extra (sábado e domingo)
     listarEscalaDia: (inicio, fim) => chamar(`/api/ocorrencias/escala-dia?${new URLSearchParams({ inicio, fim })}`, { admin: true }),
-    proximosDiasEscalaveis: () => chamar('/api/ocorrencias/escala-dia/proximos', { admin: true }),
     escalarDia: (dados) => chamar('/api/ocorrencias/escala-dia', { method: 'POST', body: dados, admin: true }),
     removerEscalaDia: (id) => chamar(`/api/ocorrencias/escala-dia/${id}`, { method: 'DELETE', admin: true }),
 

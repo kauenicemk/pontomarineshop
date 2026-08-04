@@ -1,6 +1,6 @@
 const db = require('../db/db');
 const { registrarAuditoria } = require('../utils/auditoria');
-const { diaDaSemana, agoraBrasilia } = require('../utils/tempo');
+const { diaDaSemana } = require('../utils/tempo');
 
 /**
  * ESCALA DE DIA EXTRA — sábado e domingo (ver migração 0009).
@@ -127,23 +127,4 @@ async function remover(id) {
     });
 }
 
-/**
- * Próximos sábados e domingos a partir de hoje — alimenta o seletor da tela.
- * Devolver só datas válidas evita o erro em vez de explicá-lo depois de acontecer.
- */
-function proximosDias(semanas = 12) {
-    const base = new Date(`${agoraBrasilia().data}T12:00:00Z`);
-    const datas = [];
-
-    for (let i = 0; i < semanas * 7; i += 1) {
-        const d = new Date(base);
-        d.setUTCDate(d.getUTCDate() + i);
-        const dia = d.getUTCDay();
-        if (dia === SABADO || dia === DOMINGO) {
-            datas.push({ data: d.toISOString().slice(0, 10), tipo: dia === SABADO ? 'sabado' : 'domingo' });
-        }
-    }
-    return datas;
-}
-
-module.exports = { listar, conjuntoDoPeriodo, criar, criarEmLote, remover, proximosDias, tipoDoDia };
+module.exports = { listar, conjuntoDoPeriodo, criar, criarEmLote, remover, tipoDoDia };

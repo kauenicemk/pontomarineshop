@@ -9,27 +9,55 @@ import { confirmar } from '../confirmar.js';
  * Sábado e domingo não fazem parte da jornada de todo mundo. Quem é escalado passa a
  * ter aquele dia como dia de trabalho, só ele e só naquela data.
  *
+ * A escolha do dia é um CALENDÁRIO, não uma lista de datas. Escala se pensa olhando o
+ * mês ("preciso de gente no fim de semana do dia 8"), e o calendário mostra de uma vez
+ * quais dias são escaláveis, quais já têm gente e quantos. Dias de semana aparecem
+ * apagados e não clicáveis — a regra fica visível em vez de virar mensagem de erro.
+ *
+ * O mês do calendário também comanda a listagem abaixo: um controle só, sem o gestor
+ * precisar manter dois seletores de período em sincronia.
+ *
  * A lista de quem pode ser escalado é FILTRADA: num sábado só aparece quem não tem
  * sábado na jornada. Mostrar quem já trabalha todo sábado seria oferecer uma escala
  * que não muda nada — e ainda faria o gestor duvidar se precisava escalar ou não.
- *
- * As escalas ficam em gavetas por data. Ao longo dos meses a lista cresce muito, e uma
- * tabela corrida de 60 linhas não responde a pergunta que se faz aqui: "quem trabalha
- * no dia 8?".
  */
 
 const ROTULOS_REGIME = { CLT: 'CLT', ESTAGIARIO: 'Estagiário', PJ: 'PJ' };
 const ROTULOS_TIPO = { sabado: 'Sábado', domingo: 'Domingo' };
+const NOMES_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const INICIAIS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 let funcionariosCache = [];
-let diasDisponiveis = [];
+let escalasDoMes = [];
 let gavetasAbertas = new Set();
+let mesVisivel = mesAtualISO();     // 'YYYY-MM' — comanda calendário e listagem
+let dataSelecionada = null;         // 'YYYY-MM-DD' escolhida no calendário
 
 const dataBR = (iso) => String(iso || '').split('-').reverse().join('/');
+
+/** Hoje em ISO, sem deixar o fuso do navegador virar o dia. */
+function hojeISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function primeiroEUltimoDiaDoMes(mesISO) {
     const [ano, mes] = mesISO.split('-').map(Number);
     return { inicio: `${mesISO}-01`, fim: `${mesISO}-${String(new Date(ano, mes, 0).getDate()).padStart(2, '0')}` };
+}
+
+function somarMeses(mesISO, delta) {
+    const [ano, mes] = mesISO.split('-').map(Number);
+    const d = new Date(Date.UTC(ano, mes - 1 + delta, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** 'sabado' | 'domingo' | null — o tipo sai da própria data, igual ao backend. */
+function tipoDaData(dataISO) {
+    if (!dataISO) return null;
+    const dow = new Date(`${dataISO}T12:00:00Z`).getUTCDay();
+    return dow === 6 ? 'sabado' : dow === 0 ? 'domingo' : null;
 }
 
 /**
@@ -42,34 +70,147 @@ function elegiveisPara(tipo) {
     return funcionariosCache.filter((f) => !(f.jornada && f.jornada.sabado && f.jornada.sabado.trabalha));
 }
 
-function tipoDaData(dataISO) {
-    const encontrado = diasDisponiveis.find((d) => d.data === dataISO);
-    if (encontrado) return encontrado.tipo;
-    const dow = new Date(`${dataISO}T12:00:00Z`).getUTCDay();
-    return dow === 6 ? 'sabado' : dow === 0 ? 'domingo' : null;
+/* ===================== Calendário ===================== */
+
+/** Quantas pessoas já estão escaladas em cada data do mês carregado. */
+function contagemPorData() {
+    const mapa = new Map();
+    escalasDoMes.forEach((e) => mapa.set(e.data, (mapa.get(e.data) || 0) + 1));
+    return mapa;
+}
+
+function renderizarCalendario() {
+    const alvo = document.getElementById('escala-calendario');
+    if (!alvo) return;
+
+    const [ano, mes] = mesVisivel.split('-').map(Number);
+    const primeiroDiaSemana = new Date(Date.UTC(ano, mes - 1, 1)).getUTCDay();
+    const diasNoMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+    const contagem = contagemPorData();
+    const hoje = hojeISO();
+
+    const celulas = [];
+    // Casas vazias até o primeiro dia cair na coluna certa da semana.
+    for (let i = 0; i < primeiroDiaSemana; i += 1) celulas.push('<span class="cal-vazio"></span>');
+
+    for (let dia = 1; dia <= diasNoMes; dia += 1) {
+        const iso = `${mesVisivel}-${String(dia).padStart(2, '0')}`;
+        const tipo = tipoDaData(iso);
+        const escalados = contagem.get(iso) || 0;
+
+        // Dia de semana fica visível mas desabilitado: mostra a regra em vez de
+        // deixar o gestor descobrir no erro que terça não vale.
+        if (!tipo) {
+            celulas.push(`<span class="cal-dia cal-dia-bloqueado" aria-hidden="true">${dia}</span>`);
+            continue;
+        }
+
+        const classes = ['cal-dia', `cal-dia-${tipo}`];
+        if (iso === dataSelecionada) classes.push('selecionado');
+        if (iso === hoje) classes.push('hoje');
+        if (escalados > 0) classes.push('tem-escala');
+        if (iso < hoje) classes.push('passado');
+
+        const titulo = escalados > 0
+            ? `${ROTULOS_TIPO[tipo]} ${dataBR(iso)} — ${escalados} escalado(s)`
+            : `${ROTULOS_TIPO[tipo]} ${dataBR(iso)} — ninguém escalado`;
+
+        celulas.push(`
+            <button type="button" class="${classes.join(' ')}" data-dia="${iso}"
+                    aria-pressed="${iso === dataSelecionada}" title="${escapeHtml(titulo)}">
+                <span class="cal-dia-numero">${dia}</span>
+                ${escalados > 0 ? `<span class="cal-dia-marca">${escalados}</span>` : ''}
+            </button>`);
+    }
+
+    alvo.innerHTML = `
+        <div class="cal-topo">
+            <button type="button" class="cal-nav" id="cal-anterior" aria-label="Mês anterior">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="cal-mes">${NOMES_MES[mes - 1]} de ${ano}</span>
+            <button type="button" class="cal-nav" id="cal-proximo" aria-label="Próximo mês">
+                <svg class="icone-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </div>
+        <div class="cal-semana">${INICIAIS_SEMANA.map((i) => `<span>${i}</span>`).join('')}</div>
+        <div class="cal-grade">${celulas.join('')}</div>
+        <p class="cal-legenda">
+            <span class="cal-ponto cal-ponto-sabado"></span> sábado
+            <span class="cal-ponto cal-ponto-domingo"></span> domingo
+            <span class="cal-legenda-nota">o número no canto é quanta gente já está escalada</span>
+        </p>`;
+
+    document.getElementById('cal-anterior').addEventListener('click', () => irParaMes(-1));
+    document.getElementById('cal-proximo').addEventListener('click', () => irParaMes(1));
+    alvo.querySelectorAll('[data-dia]').forEach((btn) => {
+        btn.addEventListener('click', () => selecionarDia(btn.dataset.dia));
+    });
+
+    atualizarResumoDoDia();
+}
+
+function irParaMes(delta) {
+    mesVisivel = somarMeses(mesVisivel, delta);
+    // A seleção não sobrevive à troca de mês: escalar num dia que saiu da tela
+    // seria fácil de fazer sem perceber.
+    dataSelecionada = null;
+    carregarEscalaDia();
+}
+
+function selecionarDia(iso) {
+    dataSelecionada = dataSelecionada === iso ? null : iso;
+    renderizarCalendario();
+    renderizarElegiveis();
+}
+
+/** Cabeçalho do formulário: que dia está escolhido e qual regra vale nele. */
+function atualizarResumoDoDia() {
+    const alvo = document.getElementById('escala-dia-escolhido');
+    if (!alvo) return;
+
+    if (!dataSelecionada) {
+        alvo.innerHTML = '<span class="texto-vazio">Escolha um sábado ou domingo no calendário.</span>';
+        return;
+    }
+
+    const tipo = tipoDaData(dataSelecionada);
+    const jaEscalados = escalasDoMes.filter((e) => e.data === dataSelecionada);
+
+    alvo.innerHTML = `
+        <span class="badge-turno badge-${tipo}">${ROTULOS_TIPO[tipo]}</span>
+        <b>${dataBR(dataSelecionada)}</b>
+        ${jaEscalados.length > 0
+            ? `<span class="texto-vazio">— ${jaEscalados.length} já escalado(s)</span>`
+            : ''}`;
 }
 
 /* ===================== Listagem em gavetas ===================== */
 
 export async function carregarEscalaDia() {
-    const mes = document.getElementById('escala-mes').value || mesAtualISO();
-    const { inicio, fim } = primeiroEUltimoDiaDoMes(mes);
+    const { inicio, fim } = primeiroEUltimoDiaDoMes(mesVisivel);
     const alvo = document.getElementById('lista-escala-dia');
 
     alvo.innerHTML = '<p class="texto-vazio">Carregando...</p>';
 
-    let escalas;
     try {
-        escalas = await api.listarEscalaDia(inicio, fim);
+        escalasDoMes = await api.listarEscalaDia(inicio, fim);
     } catch (e) {
+        escalasDoMes = [];
         alvo.innerHTML = `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
+        renderizarCalendario();
         return;
     }
 
-    document.getElementById('escala-contador-total').textContent = escalas.length;
+    document.getElementById('escala-contador-total').textContent = escalasDoMes.length;
+    document.getElementById('escala-mes-titulo').textContent =
+        `${NOMES_MES[Number(mesVisivel.split('-')[1]) - 1]} de ${mesVisivel.split('-')[0]}`;
+
+    renderizarCalendario();
+    renderizarElegiveis();
 
     const porData = new Map();
-    escalas.forEach((e) => {
+    escalasDoMes.forEach((e) => {
         if (!porData.has(e.data)) porData.set(e.data, []);
         porData.get(e.data).push(e);
     });
@@ -153,70 +294,62 @@ async function removerEscala(id) {
 
 /* ===================== Formulário ===================== */
 
-async function montarFormulario() {
-    const seletorData = document.getElementById('escala-data');
-    try {
-        const [todos, resp] = await Promise.all([api.listarFuncionariosTodos(), api.proximosDiasEscalaveis()]);
-        funcionariosCache = todos.filter((f) => f.ativo !== 0);
-        diasDisponiveis = resp.dias || [];
-    } catch (e) {
-        document.getElementById('escala-funcionarios').innerHTML =
-            `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
-        return;
-    }
-
-    // Só sábados e domingos no seletor. O backend também recusa dia de semana, mas
-    // oferecer apenas datas válidas evita o erro em vez de explicá-lo depois.
-    seletorData.innerHTML = diasDisponiveis
-        .map((d) => `<option value="${d.data}">${ROTULOS_TIPO[d.tipo]} — ${dataBR(d.data)}</option>`).join('');
-
-    renderizarElegiveis();
-}
-
 function renderizarElegiveis() {
     const lista = document.getElementById('escala-funcionarios');
     const aviso = document.getElementById('escala-aviso-elegiveis');
-    const tipo = tipoDaData(document.getElementById('escala-data').value);
-    const elegiveis = elegiveisPara(tipo);
+    if (!lista) return;
+
+    const tipo = tipoDaData(dataSelecionada);
+
+    if (!tipo) {
+        aviso.textContent = '';
+        lista.innerHTML = '<p class="texto-vazio">Escolha um dia no calendário para ver quem pode ser escalado.</p>';
+        return;
+    }
 
     aviso.textContent = tipo === 'sabado'
         ? 'Aparecem só os colaboradores que não trabalham naturalmente aos sábados.'
         : 'Domingo não faz parte da jornada de ninguém — todos podem ser escalados.';
 
+    // Quem já está escalado nesse dia não pode ser escalado de novo.
+    const jaEscalados = new Set(escalasDoMes.filter((e) => e.data === dataSelecionada).map((e) => e.funcionario_id));
+
     // Estagiários primeiro: são o caso mais frequente de escala eventual.
-    const ordenados = elegiveis.slice().sort((a, b) => {
+    const ordenados = elegiveisPara(tipo).slice().sort((a, b) => {
         const peso = (f) => (f.regime === 'ESTAGIARIO' ? 0 : 1);
         return peso(a) - peso(b) || a.nome.localeCompare(b.nome);
     });
 
     lista.innerHTML = ordenados.length
-        ? ordenados.map((f) => `
-            <label class="label-checkbox item-escala">
-                <input type="checkbox" class="check-escala" value="${f.id}">
+        ? ordenados.map((f) => {
+            const escalado = jaEscalados.has(f.id);
+            return `
+            <label class="label-checkbox item-escala ${escalado ? 'ja-escalado' : ''}">
+                <input type="checkbox" class="check-escala" value="${f.id}" ${escalado ? 'disabled' : ''}>
                 <span>${escapeHtml(f.emoji || '')} ${escapeHtml(f.nome)}
-                    <span class="badge-turno">${escapeHtml(ROTULOS_REGIME[f.regime] || f.regime || '')}</span></span>
-            </label>`).join('')
+                    <span class="badge-turno">${escapeHtml(ROTULOS_REGIME[f.regime] || f.regime || '')}</span>
+                    ${escalado ? '<span class="texto-vazio">já escalado</span>' : ''}</span>
+            </label>`;
+        }).join('')
         : '<p class="texto-vazio">Todos os colaboradores ativos já trabalham neste dia da semana.</p>';
 }
 
 async function salvarEscala() {
-    const data = document.getElementById('escala-data').value;
     const observacao = document.getElementById('escala-observacao').value.trim();
     const erro = document.getElementById('escala-erro');
     const ids = [...document.querySelectorAll('.check-escala:checked')].map((c) => Number(c.value));
 
     erro.textContent = '';
-    if (!data) { erro.textContent = 'Escolha o dia.'; return; }
+    if (!dataSelecionada) { erro.textContent = 'Escolha um sábado ou domingo no calendário.'; return; }
     if (ids.length === 0) { erro.textContent = 'Selecione ao menos um colaborador.'; return; }
 
     const btn = document.getElementById('btn-salvar-escala');
     btn.disabled = true;
     try {
-        const resp = await api.escalarDia({ funcionarios_ids: ids, data, observacao });
+        const resp = await api.escalarDia({ funcionarios_ids: ids, data: dataSelecionada, observacao });
         toast(resp.message, 'sucesso');
-        document.querySelectorAll('.check-escala').forEach((c) => { c.checked = false; });
         document.getElementById('escala-observacao').value = '';
-        gavetasAbertas.add(data);   // a gaveta do dia que acabou de ser montado abre sozinha
+        gavetasAbertas.add(dataSelecionada);   // a gaveta do dia montado abre sozinha
         carregarEscalaDia();
     } catch (e) {
         erro.textContent = e.message;
@@ -230,13 +363,16 @@ export function iniciarEscalaDia() {
     if (!btn || btn.dataset.iniciado) return;
     btn.dataset.iniciado = '1';
 
-    const mesInput = document.getElementById('escala-mes');
-    if (!mesInput.value) mesInput.value = mesAtualISO();
-
     btn.addEventListener('click', salvarEscala);
-    document.getElementById('escala-data').addEventListener('change', renderizarElegiveis);
-    document.getElementById('escala-mes').addEventListener('change', carregarEscalaDia);
-    document.getElementById('btn-filtrar-escala').addEventListener('click', carregarEscalaDia);
 
-    montarFormulario();
+    // O cadastro é buscado uma vez; a partir daí só o mês muda.
+    api.listarFuncionariosTodos()
+        .then((todos) => {
+            funcionariosCache = todos.filter((f) => f.ativo !== 0);
+            renderizarElegiveis();
+        })
+        .catch((e) => {
+            document.getElementById('escala-funcionarios').innerHTML =
+                `<p style="color:var(--vermelho)">${escapeHtml(e.message)}</p>`;
+        });
 }

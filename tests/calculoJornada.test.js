@@ -607,17 +607,6 @@ test('escala só aceita sábado ou domingo', async () => {
     );
 });
 
-test('os dias sugeridos são todos sábado ou domingo', () => {
-    const escala = require('../src/services/escalaDia.service');
-    const dias = escala.proximosDias(4);
-    assert.ok(dias.length >= 8, 'quatro semanas devem render pelo menos 8 datas');
-    dias.forEach(({ data, tipo }) => {
-        const d = new Date(`${data}T12:00:00Z`).getUTCDay();
-        assert.ok(d === 0 || d === 6, `${data} deveria ser fim de semana`);
-        assert.strictEqual(tipo, d === 6 ? 'sabado' : 'domingo');
-    });
-});
-
 /* ===================== Escala de domingo ===================== */
 
 test('domingo escalado não tem meta nem atraso, e é 100% de extra', () => {
@@ -749,4 +738,11 @@ test('data anterior à primeira vigência cai na versão mais antiga', () => {
     };
     // Não pode devolver vazio: isso transformaria em falta todo dia anterior ao cadastro.
     assert.strictEqual(jornadaVigenteEm(versoes, '2026-01-10').quarta.horario_entrada, '08:00');
+});
+
+test('o tipo do dia sai da data, igual no calendário e no backend', () => {
+    const escala = require('../src/services/escalaDia.service');
+    assert.strictEqual(escala.tipoDoDia(SABADO), 'sabado');
+    assert.strictEqual(escala.tipoDoDia(DOMINGO), 'domingo');
+    assert.strictEqual(escala.tipoDoDia(QUARTA), null, 'dia de semana nao e escalavel');
 });

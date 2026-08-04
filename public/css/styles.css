@@ -990,3 +990,89 @@ tr.selecionada { background: var(--accent-suave); }
     margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
 }
 .dica-vigencia { margin-top: 2px; }
+
+/* ===================== Calendário da escala ===================== */
+/* Escala se pensa olhando o mês inteiro. O calendário mostra de uma vez quais dias
+   são escaláveis (fim de semana), quais já têm gente e quantos — informação que
+   uma lista suspensa de datas esconde. */
+
+.calendario {
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: var(--raio-sm); padding: 12px; margin-bottom: 14px;
+}
+
+.cal-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-mes { font-family: var(--fonte-display); font-weight: 700; font-size: 13.5px; }
+.cal-nav {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: none; border: 1px solid var(--border); color: var(--texto-mudo);
+    transition: background var(--transicao), color var(--transicao);
+}
+.cal-nav:hover { background: var(--card); color: var(--texto); }
+.cal-nav .icone-svg { width: 15px; height: 15px; }
+
+.cal-semana, .cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-semana {
+    margin-bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: .3px;
+    color: var(--texto-sutil); text-align: center; text-transform: uppercase;
+}
+
+.cal-vazio { aspect-ratio: 1; }
+
+.cal-dia {
+    position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; border-radius: 8px;
+    background: var(--card); color: var(--texto);
+    font-family: inherit; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+    transition: background var(--transicao), border-color var(--transicao), transform var(--transicao);
+}
+.cal-dia:hover { border-color: var(--accent); transform: translateY(-1px); }
+.cal-dia-numero { line-height: 1; }
+
+/* Dia de semana: visível, mas claramente fora de alcance. Mostrar a regra na tela
+   evita o gestor descobrir no erro que terça não pode ser escalada. */
+.cal-dia-bloqueado {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--texto-sutil); opacity: .35;
+}
+
+.cal-dia-sabado { border-color: rgba(240, 130, 30, .28); }
+.cal-dia-domingo { border-color: rgba(167, 139, 250, .28); }
+.cal-dia.passado { opacity: .6; }
+.cal-dia.hoje { box-shadow: inset 0 0 0 1px var(--accent); }
+
+.cal-dia.selecionado {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--sobre-accent); opacity: 1;
+}
+.cal-dia.selecionado .cal-dia-marca { background: var(--sobre-accent); color: var(--accent); }
+
+/* Quantas pessoas já estão escaladas naquele dia — responde "já montei esse fim
+   de semana?" sem precisar abrir a gaveta. */
+.cal-dia-marca {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 15px; height: 15px; padding: 0 3px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: var(--verde); color: #04140a;
+    font-size: 9.5px; font-weight: 800; line-height: 1;
+}
+
+.cal-legenda {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+    margin: 10px 0 0; font-size: 10.5px; color: var(--texto-mudo);
+}
+.cal-legenda-nota { flex-basis: 100%; color: var(--texto-sutil); }
+.cal-ponto { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+.cal-ponto-sabado { background: var(--accent); }
+.cal-ponto-domingo { background: var(--roxo); }
+.cal-legenda .cal-ponto:not(:first-child) { margin-left: 8px; }
+
+.escala-dia-escolhido {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    margin: 0 0 12px; font-size: 13px;
+}
+
+/* Quem já está escalado naquele dia continua na lista, mas travado — some da lista
+   seria pior: o gestor ficaria procurando um nome que "sumiu". */
+.item-escala.ja-escalado { opacity: .5; cursor: default; }

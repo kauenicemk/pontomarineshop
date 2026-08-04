@@ -97,11 +97,6 @@ app.get('/escala-dia', exigirAutorizacaoAdmin, async (c) => {
     }));
 });
 
-/** Sugestões de data para o seletor — evita o gestor descobrir na marra que terça não vale. */
-app.get('/escala-dia/proximos', exigirAutorizacaoAdmin, async (c) => {
-    return c.json({ dias: escalaDiaService.proximosDias(12) });
-});
-
 app.post('/escala-dia', exigirAutorizacaoAdmin, async (c) => {
     const body = await c.req.json();
     const observacao = exigirTextoOpcional(body.observacao, 'observacao', { maxLen: 300 });

@@ -124,6 +124,29 @@ app.delete('/:id/jornada/vigencias/:vigencia', exigirAutorizacaoAdmin, async (c)
 });
 
 /**
+ * Corrige nome e emoji — o caso de "o nome do colaborador foi cadastrado errado".
+ * Vai para a auditoria com o valor antigo, porque o nome aparece em espelho de ponto
+ * e relatório: precisa dar para reconstruir a quem cada documento se referia.
+ */
+app.post('/:id/identidade', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const body = await c.req.json();
+    await funcionariosService.atualizarIdentidade(id, {
+        nome: exigirTexto(body.nome, 'nome', { minLen: 2, maxLen: 100 }),
+        emoji: exigirTexto(body.emoji, 'emoji', { minLen: 1, maxLen: 8 })
+    });
+    return c.json({ message: 'Cadastro atualizado.' });
+});
+
+/** Redefine o PIN pessoal (usado para confirmar o espelho de ponto no totem). */
+app.post('/:id/pin', exigirAutorizacaoAdmin, async (c) => {
+    const id = exigirInteiro(c.req.param('id'), 'id');
+    const body = await c.req.json();
+    await funcionariosService.redefinirPin(id, exigirPin(body.pin));
+    return c.json({ message: 'PIN redefinido. Avise o colaborador do novo número.' });
+});
+
+/**
  * Horário de entrada fixo ou livre. Sem horário fixo a pessoa nunca gera atraso,
  * mas a carga horária diária continua valendo para saldo e banco de horas.
  */

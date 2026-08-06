@@ -25,6 +25,14 @@ const config = {
         //   12 min -> atraso 00:12, saldo -12
         toleranciaEntradaMin: 10,
 
+        // TOLERANCIA DE REGISTRO NA ENTRADA: um minuto de folga antes de o atraso
+        // sequer APARECER no relatorio -- mesma folga de arredondamento que o almoco
+        // ja tinha. Bater o ponto no minuto seguinte ao combinado e ruido de relogio,
+        // nao atraso, e poluir o relatorio com isso tira o valor do proprio registro.
+        //   entrou 08:01 (combinado 08:00) -> atraso 00:00, nao aparece em lugar nenhum
+        //   entrou 08:02                   -> atraso 00:02, registrado (sem descontar)
+        toleranciaEntradaRegistroMin: 1,
+
         // TOLERANCIA DE ALMOCO: um minuto de folga alem do tempo de almoco combinado
         // (o combinado fica em tolerancia_almoco_min, por funcionario). Passou disso,
         // o excedente conta como atraso E desconta do saldo -- aqui nao ha perdao,

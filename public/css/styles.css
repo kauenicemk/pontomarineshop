@@ -1076,3 +1076,24 @@ tr.selecionada { background: var(--accent-suave); }
 /* Quem já está escalado naquele dia continua na lista, mas travado — some da lista
    seria pior: o gestor ficaria procurando um nome que "sumiu". */
 .item-escala.ja-escalado { opacity: .5; cursor: default; }
+
+/* ===================== Histórico de vigências da jornada ===================== */
+/* Com jornada versionada, os campos acima mostram só a versão de hoje. Sem esta lista
+   uma vigência lançada por engano fica invisível e muda o cálculo dos dias seguintes
+   em silêncio. */
+.bloco-vigencias {
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);
+}
+.linha-vigencia {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 7px 10px; margin-bottom: 5px;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: var(--raio-sm); font-size: 12px;
+}
+.linha-vigencia-quando { font-weight: 700; white-space: nowrap; }
+.linha-vigencia-resumo { flex: 1; color: var(--texto-mudo); min-width: 180px; }
+
+/* Vigência sem nenhum dia de trabalho zera a meta e faz tudo virar hora extra —
+   quase sempre é engano, então grita na tela. */
+.linha-vigencia.alerta { border-color: var(--borda-perigo); background: var(--vermelho-suave); }
+.linha-vigencia.alerta .linha-vigencia-resumo { color: var(--vermelho); }

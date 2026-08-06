@@ -746,3 +746,74 @@ test('o tipo do dia sai da data, igual no calendário e no backend', () => {
     assert.strictEqual(escala.tipoDoDia(DOMINGO), 'domingo');
     assert.strictEqual(escala.tipoDoDia(QUARTA), null, 'dia de semana nao e escalavel');
 });
+
+/* ===================== Tolerância de 1 minuto na entrada ===================== */
+
+function diaEntrando(hora, entradaFlexivel) {
+    return calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '8h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null, entrada_flexivel: entradaFlexivel ? 1 : 0 },
+        dataISO: QUARTA,
+        pontos: { ENTRADA: hora, ALMOCO_SAIDA: '12:00', ALMOCO_RETORNO: '13:00', SAIDA: '17:00' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: JORNADA_PADRAO
+    });
+}
+
+test('1 minuto de atraso na entrada não é sequer registrado', () => {
+    const dia = diaEntrando('08:01');
+    assert.strictEqual(dia.atrasoMinutos, 0, 'bater o ponto no minuto seguinte e ruido de relogio');
+    assert.strictEqual(dia.minutosAtrasoEntradaBruto, 1, 'o minuto real fica guardado, so nao conta');
+    assert.strictEqual(dia.saldoMinutos, 0);
+});
+
+test('2 minutos já aparecem como atraso, mas sem descontar', () => {
+    const dia = diaEntrando('08:02');
+    assert.strictEqual(dia.atrasoMinutos, 2, 'passou da folga de 1 min: registra');
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 0, 'mas 2 min esta abaixo do limiar de 11');
+    assert.strictEqual(dia.saldoMinutos, 0);
+});
+
+test('a folga de 1 minuto não muda o limiar de desconto', () => {
+    const dia = diaEntrando('08:12');
+    assert.strictEqual(dia.atrasoMinutos, 12);
+    assert.strictEqual(dia.atrasoDescontavelMinutos, 12);
+});
+
+/* ===================== Jornada vigente nas listagens ===================== */
+
+test('a listagem achata as versões — nunca devolve o array cru', () => {
+    // Este é o bug que esvaziou a tela de Configurar Horários: `buscarJornadaDeTodos`
+    // passou a devolver as VERSÕES (array por dia) e a tela esperava a config achatada,
+    // então todo campo vinha vazio — e salvar assim zerava a jornada da pessoa.
+    const { jornadaVigenteEm } = require('../src/services/funcionarios.service');
+    const versoes = {
+        segunda: [
+            { vigencia_inicio: '2026-08-01', horario_entrada: '09:00', meta_minutos: 480, trabalha: true },
+            { vigencia_inicio: '0001-01-01', horario_entrada: '08:00', meta_minutos: 480, trabalha: true }
+        ]
+    };
+    const vigente = jornadaVigenteEm(versoes, '2026-08-06');
+
+    assert.ok(!Array.isArray(vigente.segunda), 'a tela precisa de um objeto, nao de uma lista');
+    assert.strictEqual(vigente.segunda.horario_entrada, '09:00');
+    assert.strictEqual(vigente.segunda.meta_minutos, 480);
+    assert.strictEqual(vigente.segunda.trabalha, true);
+});
+
+test('jornada zerada faz o dia inteiro virar hora extra — o sintoma relatado', () => {
+    // Reproduz o efeito de salvar a jornada com todos os dias desmarcados.
+    const semExpediente = { quarta: { horario_entrada: '08:00', meta_minutos: 0, trabalha: false } };
+    const dia = calc.montarRelatorioDia({
+        funcionario: { id: 1, nome: 'T', emoji: 'T', regime: 'CLT', horas_diarias: '6h', tolerancia_almoco_min: 60, almoco_flexivel: 0, salario_base: null },
+        dataISO: QUARTA,
+        pontos: { ENTRADA: '08:15', ALMOCO_SAIDA: '12:02', ALMOCO_RETORNO: '12:29', SAIDA: '14:46' },
+        justificativas: {},
+        ehFeriado: false,
+        percentuaisHorasExtras: PERCENTUAIS,
+        jornadaPorGrupo: semExpediente
+    });
+    assert.strictEqual(dia.saldoMinutos, null, 'sem meta nao ha saldo — a coluna mostra "---"');
+    assert.strictEqual(dia.horas_extras.minutos, 364, 'e tudo que foi trabalhado vira extra');
+});

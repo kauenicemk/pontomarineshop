@@ -90,6 +90,10 @@ function calcularAtrasoEntradaBruto(pontos, dataISO, jornadaPorGrupo, troca, esc
     if (!pontos.ENTRADA) return 0;
     const cfg = configDoGrupoNaData(dataISO, jornadaPorGrupo, troca, escalado);
     if (!cfg) return 0;
+
+    // Valor CRU, sem folga nenhuma. A tolerância de 1 minuto é aplicada em
+    // `decidirDescontoDoAtraso`, que precisa do número real para devolver ao saldo o
+    // tempo que deixou de contar como atraso.
     return Math.max(0, paraMinutos(pontos.ENTRADA) - paraMinutos(cfg.horario_entrada));
 }
 
@@ -125,14 +129,25 @@ function calcularAtrasoEntradaMinutos(pontos, dataISO, jornadaPorGrupo, troca, e
  *   perdoado    -> quanto precisa voltar ao saldo para não punir por outra via
  */
 function decidirDescontoDoAtraso(atrasoEntradaBruto, atrasoAlmoco, podeDescontar = true) {
-    const total = atrasoEntradaBruto + atrasoAlmoco;
+    const bruto = atrasoEntradaBruto + atrasoAlmoco;
+
+    // FOLGA DE 1 MINUTO NA ENTRADA: bater o ponto no minuto seguinte ao combinado é
+    // ruído de relógio, não atraso. Esse minuto não entra nem no que é exibido —
+    // poluir o relatório com ele tira o valor do próprio registro.
+    const entradaContada = atrasoEntradaBruto <= config.jornada.toleranciaEntradaRegistroMin
+        ? 0
+        : atrasoEntradaBruto;
+
+    const total = entradaContada + atrasoAlmoco;
     const desconta = podeDescontar && total >= config.jornada.minimoAtrasoDescontavelMin;
+    const descontavel = desconta ? total : 0;
+
     return {
         total,
-        descontavel: desconta ? total : 0,
-        // Tudo que não desconta volta ao saldo: o atraso não pode ser relevado de um
-        // lado e continuar comendo horas do outro.
-        perdoado: desconta ? 0 : total
+        descontavel,
+        // Tudo que não desconta volta ao saldo — inclusive o minuto de folga da entrada.
+        // Relevar o atraso e continuar comendo a hora seria punir pela porta dos fundos.
+        perdoado: bruto - descontavel
     };
 }
 

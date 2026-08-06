@@ -73,6 +73,8 @@ export const api = {
     cadastrarBiometria: (id, descritor) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'POST', body: { descritor }, admin: true }),
     removerBiometria: (id) => chamar(`/api/funcionarios/${id}/biometria`, { method: 'DELETE', admin: true }),
     resumoBiometria: () => chamar('/api/funcionarios/biometria/resumo', { admin: true }),
+    atualizarIdentidade: (id, dados) => chamar(`/api/funcionarios/${id}/identidade`, { method: 'POST', body: dados, admin: true }),
+    redefinirPin: (id, pin) => chamar(`/api/funcionarios/${id}/pin`, { method: 'POST', body: { pin }, admin: true }),
     atualizarDadosCadastrais: (id, dados) => chamar(`/api/funcionarios/${id}/dados-cadastrais`, { method: 'POST', body: dados, admin: true }),
 
     // Ponto (totem)

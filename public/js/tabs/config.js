@@ -14,6 +14,42 @@ const GRUPOS = [
     { chave: 'sabado', rotulo: 'Sábado' }
 ];
 
+/**
+ * Histórico de vigências da jornada.
+ *
+ * Mostrar isso não é luxo: com jornada versionada, o que está nos campos acima é só a
+ * versão de hoje. Sem a lista, uma vigência lançada por engano fica invisível e
+ * silenciosamente muda o cálculo de todos os dias seguintes — que foi exatamente o que
+ * aconteceu quando a tela abriu com os campos vazios e alguém salvou assim.
+ */
+function listaDeVigencias(f) {
+    const vigencias = f.vigencias || [];
+    if (vigencias.length <= 1) return '';
+
+    return `
+        <div class="bloco-vigencias">
+            <p class="rotulo" style="margin:0 0 6px;">Histórico de horários</p>
+            ${vigencias.map((v) => `
+                <div class="linha-vigencia ${v.semExpediente ? 'alerta' : ''}">
+                    <span class="linha-vigencia-quando">
+                        ${v.original ? 'Desde o cadastro' : `A partir de ${dataBR(v.vigencia_inicio)}`}
+                        ${v.futura ? '<span class="badge-turno">futura</span>' : ''}
+                    </span>
+                    <span class="linha-vigencia-resumo">
+                        ${v.semExpediente
+                            ? '<b>nenhum dia de trabalho</b> — provavelmente salvo por engano'
+                            : `${v.diasDeTrabalho} dia(s) · entrada ${escapeHtml(v.horarios.join(', '))}`}
+                    </span>
+                    ${v.original
+                        ? ''
+                        : `<button class="action-btn btn-remover-vigencia" data-vigencia="${v.vigencia_inicio}"
+                                   style="border-color:var(--borda-perigo); color:var(--vermelho);">Desfazer</button>`}
+                </div>`).join('')}
+        </div>`;
+}
+
+const dataBR = (iso) => String(iso || '').split('-').reverse().join('/');
+
 /** Data de hoje em ISO, sem depender de fuso do navegador virar o dia. */
 function hojeISO() {
     const d = new Date();
@@ -121,6 +157,8 @@ export async function renderizarAbaConfig() {
                 ${GRUPOS.map((g) => linhaGrupo(g, f.jornada[g.chave])).join('')}
             </div>
 
+            ${listaDeVigencias(f)}
+
             <!--
                 VIGÊNCIA. Salvar cria uma versão a partir desta data; os dias anteriores
                 continuam com o horário que valia na época. Sem isso, trocar o turno de
@@ -154,6 +192,13 @@ export async function renderizarAbaConfig() {
 
     // A chave de horário livre reflete na hora: esconder os campos de entrada só depois
     // de salvar deixaria o gestor preenchendo um horário que não vai ser usado.
+    container.querySelectorAll('.btn-remover-vigencia').forEach((btn) => {
+        btn.addEventListener('click', () => desfazerVigencia(
+            btn.closest('.config-row-funcionario').dataset.id,
+            btn.dataset.vigencia
+        ));
+    });
+
     container.querySelectorAll('.input-entrada-flexivel').forEach((chk) => {
         chk.addEventListener('change', () => {
             const grupos = chk.closest('.config-gaveta-corpo').querySelector('.jornada-grupos');
@@ -333,6 +378,22 @@ function lerJornadaDaLinha(linha) {
     return jornada;
 }
 
+async function desfazerVigencia(id, vigencia) {
+    const ok = await confirmar(
+        `Desfazer o horário que vale a partir de ${dataBR(vigencia)}?`,
+        'Os dias a partir dessa data voltam a usar o horário anterior. O histórico mais antigo não muda.',
+        { textoConfirmar: 'Desfazer', perigo: true }
+    );
+    if (!ok) return;
+    try {
+        await api.removerVigenciaJornada(id, vigencia);
+        toast('Vigência desfeita.', 'sucesso');
+        renderizarAbaConfig();
+    } catch (e) {
+        toast(e.message, 'erro');
+    }
+}
+
 async function salvarLinha(linha) {
     const id = linha.dataset.id;
     const regime = linha.querySelector('.input-regime').value;
@@ -347,6 +408,18 @@ async function salvarLinha(linha) {
     const salario_base = linha.querySelector('.input-salario').value || null;
     const cargo = linha.querySelector('.input-cargo').value.trim() || null;
     const departamento = linha.querySelector('.input-departamento').value.trim() || null;
+
+    // Salvar com todos os dias desmarcados zera a meta e faz cada minuto trabalhado
+    // virar hora extra. Quase sempre é engano — vale confirmar antes.
+    const nenhumDiaDeTrabalho = Object.values(jornada).every((d) => !d.trabalha);
+    if (nenhumDiaDeTrabalho && !entrada_flexivel) {
+        const seguir = await confirmar(
+            'Salvar sem nenhum dia de trabalho?',
+            'Nenhum dia está marcado como "Trabalha". Sem carga horária, todo minuto trabalhado vira hora extra e não há saldo nem falta. Se a intenção era só ajustar o horário, cancele e marque os dias.',
+            { textoConfirmar: 'Salvar assim mesmo', perigo: true }
+        );
+        if (!seguir) return;
+    }
 
     try {
         await api.atualizarRegime(id, regime);

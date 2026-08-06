@@ -4,9 +4,10 @@ const { agoraBrasilia, paraMinutos, grupoDoDia } = require('../utils/tempo');
 const { registrarAuditoria } = require('../utils/auditoria');
 
 // A tela de Pendências usa a MESMA tolerância de entrada do cálculo de atraso. Antes
-// havia um 10 escrito à parte aqui: bastava mudar a regra num lugar para as duas telas
-// passarem a discordar — o relatório dizendo "sem atraso" e o painel dizendo "atrasado".
-const TOLERANCIA_ATRASO_PENDENCIA_MIN = config.jornada.toleranciaEntradaMin;
+// havia um número escrito à parte aqui: bastava mudar a regra num lugar para as duas
+// telas passarem a discordar — o relatório dizendo "sem atraso" e o painel dizendo
+// "atrasado".
+const TOLERANCIA_ATRASO_PENDENCIA_MIN = config.jornada.toleranciaEntradaRegistroMin;
 
 // Tetos das listagens. Sem eles, as consultas crescem para sempre junto com o
 // histórico e um dia começam a travar a tela (e a custar mais no D1).
@@ -240,7 +241,7 @@ async function pendenciasDoDia() {
     const horaAtualMin = paraMinutos(horaAtual);
 
     const funcionarios = await db.all(
-        `SELECT id, emoji, nome FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`
+        `SELECT id, emoji, nome, entrada_flexivel FROM funcionarios WHERE ativo = 1 ORDER BY nome ASC`
     );
 
     const registrosHoje = await db.all(
@@ -257,14 +258,26 @@ async function pendenciasDoDia() {
     const ausenciaPorFuncionario = {};
     ausencias.forEach((a) => { ausenciaPorFuncionario[a.funcionario_id] = a; });
 
-    // Jornada configurada para o dia da semana de HOJE (segunda..sábado) de cada funcionário.
+    /**
+     * Jornada configurada para o dia da semana de HOJE (segunda..sábado) de cada
+     * funcionário, na VERSÃO VIGENTE hoje.
+     *
+     * Desde a migração 0009 existe mais de uma linha por (funcionário, dia da semana) —
+     * uma por vigência. Sem o filtro de data e sem ordenar, o mapa ficava com uma versão
+     * qualquer: uma jornada antiga podia mandar no painel enquanto o relatório usava a
+     * atual, e as duas telas discordavam sobre quem estava atrasado.
+     */
     const grupoHoje = grupoDoDia(hojeISO);
     const jornadaHojePorFuncionario = {};
     if (grupoHoje) {
         const linhasJornada = await db.all(
-            `SELECT funcionario_id, horario_entrada, trabalha FROM jornada_funcionario WHERE grupo_dia = ?`,
-            [grupoHoje]
+            `SELECT funcionario_id, horario_entrada, trabalha, vigencia_inicio
+             FROM jornada_funcionario
+             WHERE grupo_dia = ? AND vigencia_inicio <= ?
+             ORDER BY vigencia_inicio ASC`,
+            [grupoHoje, hojeISO]
         );
+        // Ordem ASC + sobrescrita: sobra a vigência mais recente que já começou.
         linhasJornada.forEach((l) => { jornadaHojePorFuncionario[l.funcionario_id] = l; });
     }
 
@@ -294,9 +307,12 @@ async function pendenciasDoDia() {
             if (p.ALMOCO_SAIDA && !p.ALMOCO_RETORNO) { status = 'Em Almoço'; desde = p.ALMOCO_SAIDA; }
             else if (p.ALMOCO_RETORNO) { desde = p.ALMOCO_RETORNO; }
 
-            // Só marca "chegou atrasado" quem passou da tolerância — quem chegou 5 min
+            // Só marca "chegou atrasado" quem passou da tolerância — quem chegou 1 min
             // depois não tem atraso no relatório, então também não pode ter aqui.
-            const atrasoEntrada = horarioPrevisto
+            //
+            // Quem não tem horário de entrada fixo NUNCA aparece como atrasado: cobrar
+            // pontualidade de quem não tem hora combinada é inventar uma falta.
+            const atrasoEntrada = (horarioPrevisto && !f.entrada_flexivel)
                 ? Math.max(0, paraMinutos(p.ENTRADA) - paraMinutos(horarioPrevisto))
                 : 0;
             const atrasoContado = atrasoEntrada > TOLERANCIA_ATRASO_PENDENCIA_MIN ? atrasoEntrada : 0;
@@ -332,14 +348,17 @@ async function pendenciasDoDia() {
             return;
         }
 
-        // 5) Deveria ter chegado e ainda não bateu ponto
+        // 5) Deveria ter chegado e ainda não bateu ponto.
+        // Sem horário fixo não há de que se atrasar: a pessoa aparece na lista (o gestor
+        // precisa saber que ela ainda não bateu ponto), mas nunca marcada como atrasada.
         const minCombinado = paraMinutos(horarioPrevisto || '08:00');
-        const minutosAtraso = Math.max(0, horaAtualMin - minCombinado);
+        const minutosAtraso = f.entrada_flexivel ? 0 : Math.max(0, horaAtualMin - minCombinado);
         naoChegaram.push({
             ...base,
+            semHorarioFixo: !!f.entrada_flexivel,
             atrasado: minutosAtraso > TOLERANCIA_ATRASO_PENDENCIA_MIN,
             minutosAtraso,
-            minutosParaEntrada: Math.max(0, minCombinado - horaAtualMin)
+            minutosParaEntrada: f.entrada_flexivel ? 0 : Math.max(0, minCombinado - horaAtualMin)
         });
     });
 

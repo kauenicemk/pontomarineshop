@@ -209,8 +209,47 @@ async function listarTodos() {
                 data_admissao, salario_base, cargo, departamento, ativo
          FROM funcionarios ORDER BY nome ASC`
     );
-    const jornadas = await buscarJornadaDeTodos();
-    return funcionarios.map((f) => ({ ...f, jornada: jornadas[f.id] || {} }));
+    // Jornada ACHATADA na vigência de hoje. `buscarJornadaDeTodos` devolve as versões
+    // (um array por dia da semana), formato que só serve para quem calcula um dia
+    // específico — a tela de configuração espera { segunda: {horario_entrada, ...} }.
+    const versoes = await buscarJornadaDeTodos();
+    const hoje = require('../utils/tempo').agoraBrasilia().data;
+
+    return funcionarios.map((f) => ({
+        ...f,
+        jornada: jornadaVigenteEm(versoes[f.id], hoje),
+        // Histórico de vigências, da mais recente para a mais antiga. A tela precisa
+        // dele para mostrar desde quando cada horário vale e para desfazer uma
+        // vigência lançada por engano.
+        vigencias: resumirVigencias(versoes[f.id], hoje)
+    }));
+}
+
+/**
+ * Lista as vigências de um funcionário com um resumo legível de cada uma:
+ * quando começa, quais dias trabalha e em que horário.
+ */
+function resumirVigencias(versoesPorGrupo, hojeISO) {
+    const datas = new Set();
+    Object.values(versoesPorGrupo || {}).forEach((versoes) => {
+        versoes.forEach((v) => datas.add(v.vigencia_inicio));
+    });
+
+    return [...datas].sort((a, b) => b.localeCompare(a)).map((data) => {
+        const cfg = jornadaVigenteEm(versoesPorGrupo, data);
+        const diasQueTrabalha = Object.entries(cfg).filter(([, c]) => c.trabalha);
+        const horarios = [...new Set(diasQueTrabalha.map(([, c]) => c.horario_entrada))];
+
+        return {
+            vigencia_inicio: data,
+            original: data === '0001-01-01',
+            futura: data > hojeISO,
+            diasDeTrabalho: diasQueTrabalha.length,
+            horarios,
+            // Jornada zerada quase sempre é engano — a tela destaca para dar chance de desfazer.
+            semExpediente: diasQueTrabalha.length === 0
+        };
+    });
 }
 
 async function buscarPorId(id) {
@@ -253,6 +292,59 @@ async function atualizarDadosCadastrais(id, { data_admissao, salario_base, cargo
         [data_admissao || null, salario_base ?? null, cargo || null, departamento || null, id]
     );
     await registrarAuditoria('atualizar_dados_cadastrais', 'funcionario', id, { data_admissao, salario_base, cargo, departamento });
+}
+
+/**
+ * Corrige a IDENTIDADE do colaborador: nome e emoji.
+ *
+ * Separado dos demais campos de propósito. Nome é o que aparece no espelho de ponto e
+ * em todo relatório, então trocá-lo tem peso documental — vai para a auditoria com o
+ * valor antigo e o novo, para dar para reconstruir a quem cada registro se referia.
+ *
+ * Não mexe em jornada, regime nem ponto: os registros continuam presos ao id.
+ */
+async function atualizarIdentidade(id, { nome, emoji }) {
+    const atual = await db.get(`SELECT nome, emoji FROM funcionarios WHERE id = ?`, [id]);
+    if (!atual) {
+        const erro = new Error('Colaborador não encontrado.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    // Nome repetido confunde no totem, onde a pessoa se identifica pelo nome.
+    const duplicado = await db.get(
+        `SELECT id FROM funcionarios WHERE nome = ? AND id != ?`,
+        [nome, id]
+    );
+    if (duplicado) {
+        const erro = new Error('Já existe outro colaborador com esse nome.');
+        erro.status = 409;
+        throw erro;
+    }
+
+    await db.run(`UPDATE funcionarios SET nome = ?, emoji = ? WHERE id = ?`, [nome, emoji, id]);
+    await registrarAuditoria('atualizar_identidade', 'funcionario', id, {
+        de: { nome: atual.nome, emoji: atual.emoji },
+        para: { nome, emoji }
+    });
+}
+
+/**
+ * Redefine o PIN pessoal. O PIN autoriza ações com peso (confirmar o espelho de ponto),
+ * então nunca volta em consulta nenhuma — só o hash é gravado, e a auditoria registra
+ * que houve troca sem guardar o valor.
+ */
+async function redefinirPin(id, pin) {
+    const funcionario = await db.get(`SELECT id FROM funcionarios WHERE id = ?`, [id]);
+    if (!funcionario) {
+        const erro = new Error('Colaborador não encontrado.');
+        erro.status = 404;
+        throw erro;
+    }
+
+    const hash = await bcrypt.hash(String(pin), 10);
+    await db.run(`UPDATE funcionarios SET pin_hash = ? WHERE id = ?`, [hash, id]);
+    await registrarAuditoria('redefinir_pin', 'funcionario', id, { pin: '(não registrado)' });
 }
 
 /**
@@ -334,6 +426,8 @@ module.exports = {
     atualizarEntradaFlexivel,
     atualizarRegrasAlmoco,
     atualizarDadosCadastrais,
+    atualizarIdentidade,
+    redefinirPin,
     atualizarAtivo,
     atualizarRegime,
     removerOuDemitir,

@@ -202,7 +202,13 @@ function carregarConteudoAdminAba(nomeAba) {
     if (nomeAba === 'trocas') { trocas.iniciarTrocas(); trocas.carregarTrocas(); }
     if (nomeAba === 'escala') { escalaDia.iniciarEscalaDia(); escalaDia.carregarEscalaDia(); }
     if (nomeAba === 'atestados') { atestados.iniciarAtestados(); atestados.carregarAtestados(); }
-    if (nomeAba === 'admin-geral') { admin.carregarConfigHorasExtras(); admin.carregarListaAdmins(); admin.iniciarZonaDePerigo(); }
+    if (nomeAba === 'admin-geral') {
+        admin.carregarConfigHorasExtras();
+        admin.carregarListaAdmins();
+        admin.iniciarZonaDePerigo();
+        admin.iniciarEditorDeCadastro();
+        admin.carregarEditorDeCadastro();
+    }
     if (nomeAba === 'biometria') biometria.renderizarAbaBiometria();
     if (nomeAba === 'auditoria') { auditoria.iniciarAuditoria().then(() => auditoria.carregarAuditoria()); }
 }

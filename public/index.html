@@ -663,6 +663,45 @@
                 </p>
             </div>
 
+            <!-- ---------- Corrigir cadastro de um colaborador ---------- -->
+            <div class="card">
+                <div class="bloco-cabecalho">
+                    <h2>Corrigir cadastro do colaborador</h2>
+                </div>
+                <p class="admin-secao-subtitulo" style="margin-bottom:14px;">
+                    Nome escrito errado, emoji trocado ou PIN esquecido. O histórico de ponto
+                    continua intacto — os registros ficam presos ao colaborador, não ao nome.
+                </p>
+
+                <div class="filtros">
+                    <label>Colaborador
+                        <select id="editar-func-id"></select>
+                    </label>
+                </div>
+
+                <div class="escondido" id="editar-func-campos">
+                    <div class="filtros" style="margin-top:12px;">
+                        <label>Nome <input type="text" class="campo" id="editar-func-nome" maxlength="100"></label>
+                        <label>Emoji <input type="text" class="campo" id="editar-func-emoji" maxlength="8" style="width:70px"></label>
+                    </div>
+                    <p class="erro-msg" id="editar-func-erro" role="alert"></p>
+                    <button class="btn btn-principal" id="btn-salvar-identidade" style="margin-top:6px;">Salvar nome e emoji</button>
+
+                    <div class="bloco-vigencia" style="margin-top:18px;">
+                        <p class="rotulo" style="margin:0 0 4px;">Redefinir PIN pessoal</p>
+                        <p class="dica-campo">
+                            O PIN é o que o colaborador usa no totem para ver o próprio histórico e
+                            confirmar o espelho de ponto. Ninguém consegue consultá-lo — só redefinir.
+                        </p>
+                        <div class="filtros">
+                            <label>Novo PIN <input type="text" class="campo" id="editar-func-pin" maxlength="8" placeholder="4 a 8 dígitos" inputmode="numeric" autocomplete="off"></label>
+                        </div>
+                        <p class="erro-msg" id="editar-pin-erro" role="alert"></p>
+                        <button class="btn btn-secundario" id="btn-redefinir-pin">Redefinir PIN</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>Percentuais de Hora Extra</h2>
                 <div id="lista-config-horas-extras"></div>

@@ -195,3 +195,114 @@ export async function carregarListaAdmins() {
         });
     });
 }
+
+/* ===================== Corrigir cadastro do colaborador ===================== */
+
+/**
+ * Nome, emoji e PIN de um colaborador já cadastrado.
+ *
+ * Existe porque o cadastro é feito às pressas e nome errado é o erro mais comum — e o
+ * nome sai em espelho de ponto e em todo relatório. Corrigir aqui não toca em ponto,
+ * jornada nem regime: os registros ficam presos ao id, não ao nome.
+ */
+
+let cadastroCache = [];
+
+export async function carregarEditorDeCadastro() {
+    const seletor = document.getElementById('editar-func-id');
+    if (!seletor) return;
+
+    try {
+        cadastroCache = await api.listarFuncionariosTodos();
+    } catch (e) {
+        seletor.innerHTML = '<option value="">Não foi possível carregar</option>';
+        toast(e.message, 'erro');
+        return;
+    }
+
+    seletor.innerHTML = '<option value="">Escolha um colaborador…</option>' +
+        cadastroCache.map((f) => `
+            <option value="${f.id}">${escapeHtml(f.emoji || '')} ${escapeHtml(f.nome)}${f.ativo ? '' : ' (desligado)'}</option>
+        `).join('');
+}
+
+function preencherCamposDoEditor() {
+    const id = Number(document.getElementById('editar-func-id').value);
+    const campos = document.getElementById('editar-func-campos');
+    const f = cadastroCache.find((x) => x.id === id);
+
+    campos.classList.toggle('escondido', !f);
+    document.getElementById('editar-func-erro').textContent = '';
+    document.getElementById('editar-pin-erro').textContent = '';
+    document.getElementById('editar-func-pin').value = '';
+    if (!f) return;
+
+    document.getElementById('editar-func-nome').value = f.nome;
+    document.getElementById('editar-func-emoji').value = f.emoji || '';
+}
+
+async function salvarIdentidade() {
+    const id = document.getElementById('editar-func-id').value;
+    const nome = document.getElementById('editar-func-nome').value.trim();
+    const emoji = document.getElementById('editar-func-emoji').value.trim();
+    const erro = document.getElementById('editar-func-erro');
+
+    erro.textContent = '';
+    if (!id) { erro.textContent = 'Escolha um colaborador.'; return; }
+    if (nome.length < 2) { erro.textContent = 'O nome precisa ter pelo menos 2 letras.'; return; }
+    if (!emoji) { erro.textContent = 'Escolha um emoji — é como a pessoa se identifica no totem.'; return; }
+
+    const btn = document.getElementById('btn-salvar-identidade');
+    btn.disabled = true;
+    try {
+        const resp = await api.atualizarIdentidade(id, { nome, emoji });
+        toast(resp.message, 'sucesso');
+        await carregarEditorDeCadastro();
+        document.getElementById('editar-func-id').value = id;
+        preencherCamposDoEditor();
+    } catch (e) {
+        erro.textContent = e.message;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function redefinirPin() {
+    const id = document.getElementById('editar-func-id').value;
+    const pin = document.getElementById('editar-func-pin').value.trim();
+    const erro = document.getElementById('editar-pin-erro');
+
+    erro.textContent = '';
+    if (!id) { erro.textContent = 'Escolha um colaborador.'; return; }
+    if (!/^\d{4,8}$/.test(pin)) { erro.textContent = 'O PIN precisa ter de 4 a 8 dígitos numéricos.'; return; }
+
+    const f = cadastroCache.find((x) => x.id === Number(id));
+    const ok = await confirmar(
+        `Redefinir o PIN de ${f ? f.nome : 'este colaborador'}?`,
+        'O PIN antigo deixa de funcionar imediatamente. Anote o novo e avise a pessoa — não há como consultá-lo depois.',
+        { textoConfirmar: 'Redefinir' }
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById('btn-redefinir-pin');
+    btn.disabled = true;
+    try {
+        const resp = await api.redefinirPin(id, pin);
+        toast(resp.message, 'sucesso');
+        document.getElementById('editar-func-pin').value = '';
+    } catch (e) {
+        erro.textContent = e.message;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+export function iniciarEditorDeCadastro() {
+    const seletor = document.getElementById('editar-func-id');
+    if (!seletor || seletor.dataset.iniciado) return;
+    seletor.dataset.iniciado = '1';
+
+    seletor.addEventListener('change', preencherCamposDoEditor);
+    document.getElementById('btn-salvar-identidade').addEventListener('click', salvarIdentidade);
+    document.getElementById('btn-redefinir-pin').addEventListener('click', redefinirPin);
+}
